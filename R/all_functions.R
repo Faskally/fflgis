@@ -255,15 +255,9 @@ findShift <- function(p, useRiverOrder = TRUE) {
 #' @export
 makeDRNGraph <- function(rivs) {
   # Get edges from SEPA DRN and work out the nodes (top and tail the segments)
-  edges <- lapply(rivs @ lines, function(x) x @ Lines[[1]] @ coords)
-  cc_up_nodes <- t(sapply(edges, function(x) head(x,1)))
-  cc_down_nodes <- t(sapply(edges, function(x) tail(x,1)))
-
-  cc2label <- function(x) paste0(x, collapse = ":")
-  up_nodes <- apply(cc_up_nodes, 1, cc2label)
-  down_nodes <- apply(cc_down_nodes, 1, cc2label)
-
-  g <- make_graph( c(rbind(up_nodes, down_nodes)), directed = TRUE)
+  updown_nodes <- getUpDownNodes(rivs)
+  
+  g <- make_graph(c(do.call(rbind, updown_nodes)), directed = TRUE)
 
   # add attributes to graph
   # location for nodes - this looks unnessisary, but its is safe.
@@ -272,12 +266,49 @@ makeDRNGraph <- function(rivs) {
   V(g)$x <- cc_vertices[,1]
   V(g)$y <- cc_vertices[,2]
 
+   # find mouths
   V(g)$color <- "blue"
-
-  # find mouths
   V(g)$color[degree(g, mode = "out") == 0] <- "red"
-
+  
   # add lengths of edges
+  edges <- lapply(rivs @ lines, function(x) x @ Lines[[1]] @ coords)
   E(g)$weight <- sapply(edges, LineLength, longlat = FALSE, sum = TRUE)
   g
+}
+
+#' @export
+getUpDownNodes <- function(rivs) {
+  edges <- lapply(rivs @ lines, function(x) x @ Lines[[1]] @ coords)
+  cc_up_nodes <- t(sapply(edges, function(x) head(x,1)))
+  cc_down_nodes <- t(sapply(edges, function(x) tail(x,1)))
+  
+  cc2label <- function(x) paste0(x, collapse = ":")
+  up_nodes <- apply(cc_up_nodes, 1, cc2label)
+  down_nodes <- apply(cc_down_nodes, 1, cc2label)
+  
+  list(up_node = up_nodes, down_node = down_nodes)
+}
+
+#' @export
+addUpDownNodes <- function(rivs) {
+  rivs@data <- cbind(rivs@data, getUpDownNodes(rivs))
+  rivs
+}
+
+
+#' @export
+summariseDRN <- function(g) {
+  out <- list(
+    mouths = V(g)[degree(g, mode = "out") == 0], 
+    sources = V(g)[degree(g, mode = "in") == 0],
+    psuedonodes = V(g)[degree(g, mode = "in") == 1 & degree(g, mode = "out") == 1],
+    confulences = V(g)[degree(g, mode = "in") == 2],
+    braids = V(g)[degree(g, mode = "out") == 2],
+    in3s = V(g)[degree(g, mode = "in") == 3],
+    out3s = V(g)[degree(g, mode = "out") == 3],
+    inout2plus = V(g)[degree(g, mode = "out") > 1 & degree(g, mode = "in") > 1],
+    isdag = is.dag(g)
+  )
+  
+  out  
 }

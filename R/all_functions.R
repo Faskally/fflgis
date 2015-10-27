@@ -1,4 +1,5 @@
 
+
 #' @export
 cutLineDownstream <- function(line, pt) {
   x <- line@lines[[1]]@Lines[[1]]
@@ -80,7 +81,7 @@ getOrder <- function(graph, plot.it = FALSE) {
 
   stopifnot(is.named(graph))
   wk_graph <- graph
-  
+
   # determine if the outermost nodes are to be pruned back
   idPsuedoSource <- function(gr, gr_full) {
     sourceID <- character(0)
@@ -92,7 +93,7 @@ getOrder <- function(graph, plot.it = FALSE) {
       upID <- sapply(neighborhood(gr, 1, psuedoID, mode = "in"), function(x) names(x)[2])
       # is the upID a source, if yes mark it to be removed
       sourceID <- c(sourceID, unique(names(which(degree(gr, mode = "in")[upID] == 0))))
-    } 
+    }
     # get all braided ends
     confluenceID <- names(which(degree(gr, mode = "in") > 1))
     if (length(confluenceID) > 0) {
@@ -111,29 +112,29 @@ getOrder <- function(graph, plot.it = FALSE) {
             length(do.call(intersect, upIDs)) > 0
           } else {
             # if there is atleast one unconnected node then this is
-            # a confulence, 
+            # a confulence,
             # otherwise if all up nodes are connected then it is a braid.
             upcommon <- apply(combn(1:length(upIDs[c(1,1,2)]), 2), 2, function(ids) length(do.call(intersect, upIDs[ids])))
-            all(upcommon > 0) 
+            all(upcommon > 0)
           }
         })
         # mark confulenceIDs that are braids as sources to be removed
         sourceID <- c(sourceID, unlist(upID[is.PsuedoSource][is.braid]))
       }
-    }  
-    
-    sourceID    
+    }
+
+    sourceID
   }
-  
-  
+
+
   i <- 1
   order <- rep(NA, vcount(graph))
   names(order) <- V(graph)$name
-  
+
   if (plot.it && vcount(wk_graph) > 0) {
     plot(wk_graph, vertex.label = NA, vertex.size = 0, edge.arrow.size = 0.1, main = i)
   }
-  
+
   while(vcount(wk_graph) > 1) {
     # lop while there are psuedo source nodes next to sources
     while(length(psourceID <- idPsuedoSource(wk_graph, graph)) > 0) {
@@ -144,11 +145,11 @@ getOrder <- function(graph, plot.it = FALSE) {
     outerID <- names(which(degree(wk_graph, mode = "in") == 0))
     order[outerID] <- i
     wk_graph <- induced.subgraph(wk_graph, !V(wk_graph)$name %in% outerID)
-    
+
     if (plot.it && vcount(wk_graph) > 0) {
       plot(wk_graph, vertex.label = NA, vertex.size = 0, edge.arrow.size = 0.1, main = i+1)
     }
-    
+
     i <- i + 1
   }
   if (sum(is.na(order)) == 1) order[is.na(order)] <- i
@@ -162,19 +163,19 @@ getOrder <- function(graph, plot.it = FALSE) {
 addOrder2Graph <- function(graph, order) {
   V(graph)$order <- ord
   V(graph)$color <- V(graph)$order
-  
+
   # assign orders to edges
   for (i in 1:max(V(graph)$order)) {
     if (sum(V(graph)$order == i) > 1) {
       E(graph)[from(V(graph)[V(graph)$order == i])]$order <- i
     }
   }
-  
+
   E(graph)$color <- rev(terrain.colors(max(E(graph)$order)))[E(graph)$order]
   E(graph)$width <- E(graph)$order / max(E(graph)$order) * 7
-  
+
   graph
-}  
+}
 
 #' @export
 addOrder2DRN <- function(rivs, graph) {
@@ -184,7 +185,7 @@ addOrder2DRN <- function(rivs, graph) {
   rivs@data $ start <- ends(g, E(g))[,1]
   rivs@data $ end <- ends(g, E(g))[,2]
   rivs <- addUpDownNodes(rivs)
-  rivs  
+  rivs
 }
 
 
@@ -215,7 +216,7 @@ getBuffer <- function(p, up_distance = 100, width = 25, sepaWidth = 50, shift = 
     plot(wk_rivs, add = TRUE, col = "red", lwd = 2)
     plot(wk_lines, add = TRUE, col = "blue")
   }
-  
+
   # find closest point on sepa network
   p_snap <- maptools::snapPointsToLines(p, rivs, 50)
   if (demo) points(p_snap, col = "gold", pch = 16, cex = 2)
@@ -281,28 +282,28 @@ getBuffer <- function(p, up_distance = 100, width = 25, sepaWidth = 50, shift = 
     plot(cut_area, add = TRUE, col = "purple")
     plot(cut_lines, add = TRUE, col = "purple", lwd = 2)
   }
-  
+
   # now add a buffer to the river segment
   buff_riva <- rgeos::gBuffer(cut_area, width = width, byid = FALSE)
   if (demo) {
     plot(buff_riva, add = TRUE, col = paste0(grey(0.5), "77"), border = "green", lwd = 2)
     plot(cut_area, col = "red", add = TRUE)
   }
-  
+
   # get buffer based on OS lines
   buff_rivl <- rgeos::gBuffer(cut_lines, width = width, byid = FALSE)
   if (demo) {
     plot(buff_rivl, add = TRUE, col = paste0(grey(0.5), "77"), border = "green", lwd = 2)
     plot(cut_lines, col = "pink", add = TRUE)
   }
-  
+
   # join the buffers incase there is a slight discrepancy
   buff_riv <- gUnion(buff_riva, buff_rivl)
   if (demo) plot(buff_riv, add = TRUE, col = paste0(grey(0.5), "77"), border = "cyan", lwd = 2)
 
   # substract off river areas
   buff_land <- gDifference(buff_riv, wk_area)
-  
+
   # return stuff
   list(buffer = buff_riv, buffer_nowater = buff_land, p_upstr = p_upstr, riv_seg = seg3,
        cut_area = cut_area, cut_lines = cut_lines,  # gLineMerge(seg3)?
@@ -346,7 +347,7 @@ findShift <- function(p, useRiverOrder = TRUE) {
 makeDRNGraph <- function(rivs) {
   # Get edges from SEPA DRN and work out the nodes (top and tail the segments)
   updown_nodes <- getUpDownNodes(rivs)
-  
+
   g <- make_graph(c(do.call(rbind, updown_nodes)), directed = TRUE)
 
   # add attributes to graph
@@ -359,7 +360,7 @@ makeDRNGraph <- function(rivs) {
    # find mouths
   V(g)$color <- "blue"
   V(g)$color[degree(g, mode = "out") == 0] <- "red"
-  
+
   # add lengths of edges
   edges <- lapply(rivs @ lines, function(x) x @ Lines[[1]] @ coords)
   E(g)$weight <- sapply(edges, LineLength, longlat = FALSE, sum = TRUE)
@@ -371,11 +372,11 @@ getUpDownNodes <- function(rivs) {
   edges <- lapply(rivs @ lines, function(x) x @ Lines[[1]] @ coords)
   cc_up_nodes <- t(sapply(edges, function(x) head(x,1)))
   cc_down_nodes <- t(sapply(edges, function(x) tail(x,1)))
-  
+
   cc2label <- function(x) paste0(x, collapse = ":")
   up_nodes <- apply(cc_up_nodes, 1, cc2label)
   down_nodes <- apply(cc_down_nodes, 1, cc2label)
-  
+
   list(up_node = up_nodes, down_node = down_nodes)
 }
 
@@ -389,7 +390,7 @@ addUpDownNodes <- function(rivs) {
 #' @export
 summariseDRN <- function(g) {
   out <- list(
-    mouths = V(g)[degree(g, mode = "out") == 0], 
+    mouths = V(g)[degree(g, mode = "out") == 0],
     sources = V(g)[degree(g, mode = "in") == 0],
     psuedonodes = V(g)[degree(g, mode = "in") == 1 & degree(g, mode = "out") == 1],
     confulences = V(g)[degree(g, mode = "in") == 2],
@@ -399,8 +400,8 @@ summariseDRN <- function(g) {
     inout2plus = V(g)[degree(g, mode = "out") > 1 & degree(g, mode = "in") > 1],
     isdag = is.dag(g)
   )
-  
-  out  
+
+  out
 }
 
 
@@ -411,3 +412,4 @@ openGoogleMaps <- function(point) {
   url <- paste0("https://www.google.co.uk/maps/@",xy[2],",",xy[1],",3107m/data=!3m1!1e3")
   browseURL(url)
 }
+

@@ -192,7 +192,7 @@ addOrder2DRN <- function(rivs, graph) {
 
 
 #' @export
-getBuffer <- function(p, up_distance = 100, width = 25, sepaWidth = 50, shift = c(0,0), useRiverOrder = TRUE, demo = FALSE) {
+getBuffer <- function(p, up_distance = 100, width = 25, sepaWidth = 50, shift = c(0,0), useRiverOrder = TRUE, demo = FALSE, test = FALSE) {
   # expects to have the following objects available:
   #   rivs
   #   g
@@ -223,7 +223,11 @@ getBuffer <- function(p, up_distance = 100, width = 25, sepaWidth = 50, shift = 
 
   ## move up sepa river
   # get segment that snapped point is on
-  seg <- rivs[as.character(p_snap $ nearest_line_id),]
+  if (test) {
+    seg <- rivs[as.character(p_snap $ nearest_line_id),]
+  } else {
+    seg <- rivs[as.numeric(as.character(p_snap $ nearest_line_id))-1,]
+  }
   # cut the segment to start at the snapped point
   seg2 <- cutLineDownstream(seg, p_snap)
   # how long is the line

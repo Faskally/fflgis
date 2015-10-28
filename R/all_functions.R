@@ -201,21 +201,32 @@ addOrder2DRN <- function(rivs, graph) {
 findBuffer <- function(p, up_distance = 100, width = 25, demo = FALSE)
 {
   cat("finding xy shift... "); flush.console()
-  xyshift <- findShift(p)
+  xyshift <- findShift(p, up_distance = 200)
 
   # calculate buffer using shifted sepa line
   # set sepa line (the search) buffer width based on river order
   cat("finding buffer... "); flush.console()
 
   # need to find search width first
-  searchWidth <- 50
+  # find closest line segment on sepa network
+  p_snap <- maptools::snapPointsToLines(p, rivs, 50)
+  ids <- as.character(unlist(p_snap@data[,names(p_snap) == "nearest_line_id"]))
+  if (length(ids) > 1) {
+    ids <- names(which.min(sapply(ids, function(x) gDistance(p_snap, rivs[x,]))))
+  }
+  seg <- rivs[ids, ]
+  strahler <- seg$order
+
+  searchWidth <- c(7, 10, 15, 30, 50, 100, 300, 500, 500, 500)[strahler]
 
   # now get buffer
-  out <- getBuffer(sites[i,], up_distance = 100, width = 25, sepaWidth = searchWidth, shift = xyshift)
+  out <- getBuffer(p, up_distance = 100, width = 25, sepaWidth = searchWidth, shift = xyshift)
 
   # add row IDs to buffer
   out <- out $ buffer_nowater
-  out@polygons[[1]]@ID <- rownames(sites@data)[i]
+  if ("SpatialPointsDataFrame" %in% is(p)) {
+    out@polygons[[1]]@ID <- rownames(p@data)
+  }
 
   out
 }

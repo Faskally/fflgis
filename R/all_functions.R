@@ -258,13 +258,13 @@ getBuffer <- function(p, up_distance = 100, width = 25, sepaWidth = 50, shift = 
   cut_lines <- rgeos::gIntersection(buff_sepa, wk_lines, byid=TRUE, drop_lower_td=TRUE)
 
   # now add a buffer to the river segment
-  buff_riva <- rgeos::gBuffer(cut_area, width = width, byid = FALSE)
+  buff_riva <- if (is.null(cut_area)) NULL else rgeos::gBuffer(cut_area, width = width, byid = FALSE)
 
   # get buffer based on OS lines
   buff_rivl <- rgeos::gBuffer(cut_lines, width = width, byid = FALSE)
 
   # join the buffers incase there is a slight discrepancy
-  buff_riv <- gUnion(buff_riva, buff_rivl)
+  buff_riv <- if (is.null(buff_riva)) buff_rivl else  gUnion(buff_riva, buff_rivl)
 
   # substract off river areas
   buff_land <- gDifference(buff_riv, wk_area)
@@ -295,7 +295,7 @@ getBuffer <- function(p, up_distance = 100, width = 25, sepaWidth = 50, shift = 
 }
 
 
-
+#' @export
 walkUpstream <- function(p_snap, up_distance = 100, useRiverOrder = TRUE)
 {
   # get segment that snapped point is on
@@ -452,7 +452,7 @@ openGoogleMaps <- function(point) {
 
 
 #' @export
-plotbase <- function(xy, withGoogle = FALSE, plot.rivs = TRUE, ...) {
+plotbase <- function(xy, withGoogle = FALSE, plot.rivs = TRUE, lwd = 2, ...) {
   # crop things for quicker plotting and computation
   wk_area <- cropFeature(wareas, xy, buffer = 1000)
   wk_lines <- cropFeature(wlines, xy, buffer = 1000)
@@ -470,7 +470,7 @@ plotbase <- function(xy, withGoogle = FALSE, plot.rivs = TRUE, ...) {
   wk_area@bbox <- bbox(extent(xy))
 
   #
-  plot(wk_area, add = withGoogle, border = NA, col = col_alpha("lightblue", 0.5), ...)
+  plot(wk_area, add = withGoogle, border = NA, col = "lightblue", ...)
   if (plot.rivs) plot(wk_rivs, add = TRUE, col = "red", lwd = lwd)
   plot(wk_lines, add = TRUE, col = "blue", lwd = lwd)
 }

@@ -73,7 +73,7 @@ cropFeature <- function(x, xy, buffer = 0) {
 
   ind <- as.vector(rgeos::gIntersects(x, bbox, byid = TRUE))
 
-  if (length(ind) == 0) ind <- 1
+  if (sum(ind) == 0) ind <- 1
 
   x[ind,]
 }

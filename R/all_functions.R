@@ -197,10 +197,33 @@ addOrder2DRN <- function(rivs, graph) {
 }
 
 
+#' @export
+findBuffer <- function(p, up_distance = 100, width = 25, demo = FALSE)
+{
+  cat("finding xy shift... "); flush.console()
+  xyshift <- findShift(p)
+
+  # calculate buffer using shifted sepa line
+  # set sepa line (the search) buffer width based on river order
+  cat("finding buffer... "); flush.console()
+
+  # need to find search width first
+  searchWidth <- 50
+
+  # now get buffer
+  out <- getBuffer(sites[i,], up_distance = 100, width = 25, sepaWidth = searchWidth, shift = xyshift)
+
+  # add row IDs to buffer
+  out <- out $ buffer_nowater
+  out@polygons[[1]]@ID <- rownames(sites@data)[i]
+
+  out
+}
+
 
 
 #' @export
-getBuffer <- function(p, up_distance = 100, width = 25, sepaWidth = 50, shift = c(0,0), useRiverOrder = TRUE, demo = FALSE, test = FALSE) {
+getBuffer <- function(p, up_distance = 100, width = 25, sepaWidth = 50, shift = c(0,0), useRiverOrder = TRUE, demo = FALSE) {
   # expects to have the following objects available:
   #   rivs
   #   g

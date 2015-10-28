@@ -25,7 +25,7 @@ cutLineUpstream <- function(line, pt) {
   # find which interval the snapped point is in
   int <- max(order(dists)[1:2])
   # new coords for line (cut upstream points out)
-  cc_new <- rbind(coordinates(pt), cc[-(1:int),])
+  cc_new <- rbind(coordinates(pt), cc[-(1:(int-1)),])
   SpatialLines(list(Lines(list(Line(cc_new)), ID = "A")), CRS(proj4string(line)))
 }
 
@@ -326,31 +326,42 @@ walkUpstream <- function(p_snap, up_distance = 100, useRiverOrder = TRUE)
   if (seg_len < up_distance) {
     # what are the next segments?
     upVs <- names(V(g)[nei(seg@data[["start"]], mode = "in")])
-    ids <- get.edge.ids(g, c(upVs[1], seg@data$start, upVs[2], seg@data$start))
-    upsegs <- rivs[ids,]
-    # is one a higher order? (only if useRiverOrder is TRUE)
-    if (!useRiverOrder | upsegs$order[1] == upsegs$order[2]) {
-      # walk up first
-      p_upstr1 <- getPointUpstream(upsegs[1,], up_distance - SpatialLinesLengths(seg2))
-      # cut line
-      seg3.1 <- cutLineUpstream(upsegs[2,], p_upstr1)
-      # walk up 2nd
-      p_upstr2 <- getPointUpstream(upsegs[2,], up_distance - SpatialLinesLengths(seg2))
-      # cut line
-      seg3.2 <- cutLineUpstream(upsegs[2,], p_upstr2)
-      # join lines
-      # ## NOTE: this has some strange behaviour ... it strips of detail...
-      seg3 <- gUnion(gUnion(seg2, seg3.1), seg3.2)
-      # join points
-      p_upstr <- gUnion(p_upstr1, p_upstr2)
-    } else {
-      # walk up mainstem
-      upseg <- upsegs[which.max(upsegs$order),]
+    # how many segments are there?
+    if (length(upVs) == 1) {
+      ids <- get.edge.ids(g, c(upVs[1], seg@data$start))
+      upseg <- rivs[ids,]
       # what if we encounter another junction?
       p_upstr <- getPointUpstream(upseg, up_distance - SpatialLinesLengths(seg2))
       seg3 <- cutLineUpstream(upseg, p_upstr)
       # join lines
       seg3 <- gUnion(seg2, seg3)
+    } else {
+      ids <- get.edge.ids(g, c(upVs[1], seg@data$start, upVs[2], seg@data$start))
+      upsegs <- rivs[ids,]
+      # is one a higher order? (only if useRiverOrder is TRUE)
+      if (!useRiverOrder | upsegs$order[1] == upsegs$order[2]) {
+        # walk up first
+        p_upstr1 <- getPointUpstream(upsegs[1,], up_distance - SpatialLinesLengths(seg2))
+        # cut line
+        seg3.1 <- cutLineUpstream(upsegs[2,], p_upstr1)
+        # walk up 2nd
+        p_upstr2 <- getPointUpstream(upsegs[2,], up_distance - SpatialLinesLengths(seg2))
+        # cut line
+        seg3.2 <- cutLineUpstream(upsegs[2,], p_upstr2)
+        # join lines
+        # ## NOTE: this has some strange behaviour ... it strips of detail...
+        seg3 <- gUnion(gUnion(seg2, seg3.1), seg3.2)
+        # join points
+        p_upstr <- gUnion(p_upstr1, p_upstr2)
+      } else {
+        # walk up mainstem
+        upseg <- upsegs[which.max(upsegs$order),]
+        # what if we encounter another junction?
+        p_upstr <- getPointUpstream(upseg, up_distance - SpatialLinesLengths(seg2))
+        seg3 <- cutLineUpstream(upseg, p_upstr)
+        # join lines
+        seg3 <- gUnion(seg2, seg3)
+      }
     }
   } else {
     # No need to cross junctions

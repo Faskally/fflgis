@@ -218,19 +218,68 @@ getBuffer <- function(p, up_distance = 100, width = 25, sepaWidth = 50, shift = 
   wk_rivs <- cropFeature(rivs, xy, buffer = 500)
   wk_dtm <- crop(dtm, extent(xy))
 
-  if (demo) {
-    plot(wk_dtm)
-    plot(wk_area, add = TRUE, border = NA, col = "lightblue")
-    plot(wk_rivs, add = TRUE, col = "red", lwd = 2)
-    plot(wk_lines, add = TRUE, col = "blue")
-  }
-
   # find closest point on sepa network
   p_snap <- maptools::snapPointsToLines(p, rivs, 50)
-  if (demo) points(p_snap, col = "gold", pch = 16, cex = 2)
 
-  ## move up sepa river
+  ## walk up sepa river
+  out <- walkUpstream(p_snap, up_distance, useRiverOrder)
+  p_upstr <- out$p_upstr
+  seg3 <- out$seg
+
+  # cut water polygon boundary here
+  # tricky - one solution is
+  seg3_shift <- shift(gLineMerge(seg3), shift[1], shift[2])
+  buff_sepa <- rgeos::gBuffer(seg3_shift, width = sepaWidth, byid = FALSE, capStyle = "FLAT")
+
+  cut_area <- rgeos::gIntersection(buff_sepa, wk_area, byid=TRUE, drop_lower_td=TRUE)
+  cut_lines <- rgeos::gIntersection(buff_sepa, wk_lines, byid=TRUE, drop_lower_td=TRUE)
+
+  # now add a buffer to the river segment
+  buff_riva <- rgeos::gBuffer(cut_area, width = width, byid = FALSE)
+
+  # get buffer based on OS lines
+  buff_rivl <- rgeos::gBuffer(cut_lines, width = width, byid = FALSE)
+
+  # join the buffers incase there is a slight discrepancy
+  buff_riv <- gUnion(buff_riva, buff_rivl)
+
+  # substract off river areas
+  buff_land <- gDifference(buff_riv, wk_area)
+
+  # plot results
+  if (demo) {
+    plot(wk_dtm)
+    plot(wk_area, add = TRUE, border = NA, col = col_alpha("lightblue", 0.5))
+    plot(wk_rivs, add = TRUE, col = "red", lwd = 2)
+    plot(wk_lines, add = TRUE, col = "blue")
+    points(p_snap, col = "gold", pch = 16, cex = 2)
+    points(p_upstr, col = "orange", pch = 16, cex = 2)
+    plot(seg3, col = "brown", add = TRUE, lwd = 3)
+    plot(buff_sepa, col = paste0(grey(0.5), "22"), add = TRUE)
+    plot(cut_area, add = TRUE, col = "purple")
+    plot(cut_lines, add = TRUE, col = "purple", lwd = 2)
+    plot(buff_riva, add = TRUE, col = col_alpha(grey(0.5), 0.5) , border = "green", lwd = 2)
+    plot(cut_area, col = "red", add = TRUE)
+    plot(buff_rivl, add = TRUE, col = col_alpha(grey(0.5), 0.5), border = "green", lwd = 2)
+    plot(cut_lines, col = "pink", add = TRUE)
+    plot(buff_riv, add = TRUE, col = col_alpha(grey(0.5), 0.5), border = "cyan", lwd = 2)
+  }
+
+  # return stuff
+  list(buffer = buff_riv, buffer_nowater = buff_land, p_upstr = p_upstr, riv_seg = seg3,
+       cut_area = cut_area, cut_lines = cut_lines,  # gLineMerge(seg3)?
+       buffer_sepa = buff_sepa)
+}
+
+
+
+walkUpstream <- function(p_snap, up_distance = 100, useRiverOrder = TRUE)
+{
   # get segment that snapped point is on
+  ## expects to have the following objects available:
+  #  rivs
+  #  g
+
   ids <- as.character(unlist(p_snap@data[,names(p_snap) == "nearest_line_id"]))
   if (length(ids) > 1) {
     ids <- names(which.min(sapply(ids, function(x) gDistance(p_snap, rivs[x,]))))
@@ -276,49 +325,7 @@ getBuffer <- function(p, up_distance = 100, width = 25, sepaWidth = 50, shift = 
     # cut line upstream at new point
     seg3 <- cutLineUpstream(seg2, p_upstr)
   }
-
-  if (demo) {
-    points(p_upstr, col = "orange", pch = 16, cex = 2)
-    plot(seg3, col = "brown", add = TRUE, lwd = 3)
-  }
-  # cut water polygon boundary here
-  # tricky - one solution is
-  seg3_shift <- shift(gLineMerge(seg3), shift[1], shift[2])
-  buff_sepa <- rgeos::gBuffer(seg3_shift, width = sepaWidth, byid = FALSE, capStyle = "FLAT")
-  if (demo) plot(buff_sepa, col = paste0(grey(0.5), "22"), add = TRUE)
-
-  cut_area <- rgeos::gIntersection(buff_sepa, wk_area, byid=TRUE, drop_lower_td=TRUE)
-  cut_lines <- rgeos::gIntersection(buff_sepa, wk_lines, byid=TRUE, drop_lower_td=TRUE)
-  if (demo) {
-    plot(cut_area, add = TRUE, col = "purple")
-    plot(cut_lines, add = TRUE, col = "purple", lwd = 2)
-  }
-
-  # now add a buffer to the river segment
-  buff_riva <- rgeos::gBuffer(cut_area, width = width, byid = FALSE)
-  if (demo) {
-    plot(buff_riva, add = TRUE, col = paste0(grey(0.5), "77"), border = "green", lwd = 2)
-    plot(cut_area, col = "red", add = TRUE)
-  }
-
-  # get buffer based on OS lines
-  buff_rivl <- rgeos::gBuffer(cut_lines, width = width, byid = FALSE)
-  if (demo) {
-    plot(buff_rivl, add = TRUE, col = paste0(grey(0.5), "77"), border = "green", lwd = 2)
-    plot(cut_lines, col = "pink", add = TRUE)
-  }
-
-  # join the buffers incase there is a slight discrepancy
-  buff_riv <- gUnion(buff_riva, buff_rivl)
-  if (demo) plot(buff_riv, add = TRUE, col = paste0(grey(0.5), "77"), border = "cyan", lwd = 2)
-
-  # substract off river areas
-  buff_land <- gDifference(buff_riv, wk_area)
-
-  # return stuff
-  list(buffer = buff_riv, buffer_nowater = buff_land, p_upstr = p_upstr, riv_seg = seg3,
-       cut_area = cut_area, cut_lines = cut_lines,  # gLineMerge(seg3)?
-       buffer_sepa = buff_sepa)
+  list(seg  = seg3, p_upstr = p_upstr)
 }
 
 

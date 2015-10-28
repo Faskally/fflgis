@@ -71,9 +71,60 @@ cropFeature <- function(x, xy, buffer = 0) {
     bbox <- gBuffer(bbox, width = buffer, byid = TRUE)
   }
 
-  rgeos::gIntersection(bbox, x, byid=TRUE, drop_lower_td=TRUE)
+  ind <- as.vector(rgeos::gIntersects(x, bbox, byid = TRUE))
+
+  if (length(ind) == 0) ind <- 1
+
+  x[ind,]
 }
 
+
+
+
+#' @export
+idPsuedoSource <- function(gr, gr_full) {
+  # determine if the outermost nodes are to be pruned back
+  sourceID <- character(0)
+  # get all psuedo nodes
+  psuedoID <- names(which(degree(gr, mode = "in") == 1))
+  # identify if these nodes are one down from a source
+  if (length(psuedoID) > 0) {
+    # get upstream neighbours
+    upID <- sapply(neighborhood(gr, 1, psuedoID, mode = "in"), function(x) names(x)[2])
+    # is the upID a source, if yes mark it to be removed
+    sourceID <- c(sourceID, unique(names(which(degree(gr, mode = "in")[upID] == 0))))
+  }
+  # get all braided ends
+  confluenceID <- names(which(degree(gr, mode = "in") > 1))
+  if (length(confluenceID) > 0) {
+    # what are the upstream nodes
+    upID <- lapply(neighborhood(gr, 1, confluenceID, mode = "in"), function(x) names(x)[-1])
+    # are these upstream nodes sources?
+    is.PsuedoSource <- sapply(upID, function(id) all(degree(gr, mode = "in")[id] == 0))
+    # if so are these upstream nodes connected?
+    if (any(is.PsuedoSource)) {
+      is.braid <- sapply(upID[is.PsuedoSource], function(x) {
+        if (length(x) == 1) return(TRUE) # odd one... why would this happen??
+        # how big a neighbourhood do we consider for a braid to be a braid?
+        # I have chosen 20 here... but it could easily be argued to be something less than 10...
+        upIDs <- lapply(neighborhood(gr_full, 20, x, mode = "in"), names)
+        if (length(x) == 2) {
+          length(do.call(intersect, upIDs)) > 0
+        } else {
+          # if there is atleast one unconnected node then this is
+          # a confulence,
+          # otherwise if all up nodes are connected then it is a braid.
+          upcommon <- apply(combn(1:length(upIDs[c(1,1,2)]), 2), 2, function(ids) length(do.call(intersect, upIDs[ids])))
+          all(upcommon > 0)
+        }
+      })
+      # mark confulenceIDs that are braids as sources to be removed
+      sourceID <- c(sourceID, unlist(upID[is.PsuedoSource][is.braid]))
+    }
+  }
+
+  sourceID
+}
 
 
 #' @export
@@ -81,51 +132,6 @@ getOrder <- function(graph, plot.it = FALSE) {
 
   stopifnot(is.named(graph))
   wk_graph <- graph
-
-  # determine if the outermost nodes are to be pruned back
-  idPsuedoSource <- function(gr, gr_full) {
-    sourceID <- character(0)
-    # get all psuedo nodes
-    psuedoID <- names(which(degree(gr, mode = "in") == 1))
-    # identify if these nodes are one down from a source
-    if (length(psuedoID) > 0) {
-      # get upstream neighbours
-      upID <- sapply(neighborhood(gr, 1, psuedoID, mode = "in"), function(x) names(x)[2])
-      # is the upID a source, if yes mark it to be removed
-      sourceID <- c(sourceID, unique(names(which(degree(gr, mode = "in")[upID] == 0))))
-    }
-    # get all braided ends
-    confluenceID <- names(which(degree(gr, mode = "in") > 1))
-    if (length(confluenceID) > 0) {
-      # what are the upstream nodes
-      upID <- lapply(neighborhood(gr, 1, confluenceID, mode = "in"), function(x) names(x)[-1])
-      # are these upstream nodes sources?
-      is.PsuedoSource <- sapply(upID, function(id) all(degree(gr, mode = "in")[id] == 0))
-      # if so are these upstream nodes connected?
-      if (any(is.PsuedoSource)) {
-        is.braid <- sapply(upID[is.PsuedoSource], function(x) {
-          if (length(x) == 1) return(TRUE) # odd one... why would this happen??
-          # how big a neighbourhood do we consider for a braid to be a braid?
-          # I have chosen 20 here... but it could easily be argued to be something less than 10...
-          upIDs <- lapply(neighborhood(gr_full, 20, x, mode = "in"), names)
-          if (length(x) == 2) {
-            length(do.call(intersect, upIDs)) > 0
-          } else {
-            # if there is atleast one unconnected node then this is
-            # a confulence,
-            # otherwise if all up nodes are connected then it is a braid.
-            upcommon <- apply(combn(1:length(upIDs[c(1,1,2)]), 2), 2, function(ids) length(do.call(intersect, upIDs[ids])))
-            all(upcommon > 0)
-          }
-        })
-        # mark confulenceIDs that are braids as sources to be removed
-        sourceID <- c(sourceID, unlist(upID[is.PsuedoSource][is.braid]))
-      }
-    }
-
-    sourceID
-  }
-
 
   i <- 1
   order <- rep(NA, vcount(graph))
@@ -177,6 +183,8 @@ addOrder2Graph <- function(graph, order) {
   graph
 }
 
+
+
 #' @export
 addOrder2DRN <- function(rivs, graph) {
   rivs@data $ order <- E(graph)$order
@@ -223,11 +231,11 @@ getBuffer <- function(p, up_distance = 100, width = 25, sepaWidth = 50, shift = 
 
   ## move up sepa river
   # get segment that snapped point is on
-  if (test) {
-    seg <- rivs[as.character(p_snap $ nearest_line_id),]
-  } else {
-    seg <- rivs[as.numeric(as.character(p_snap $ nearest_line_id))-1,]
+  ids <- as.character(unlist(p_snap@data[,names(p_snap) == "nearest_line_id"]))
+  if (length(ids) > 1) {
+    ids <- names(which.min(sapply(ids, function(x) gDistance(p_snap, rivs[x,]))))
   }
+  seg <- rivs[ids, ]
   # cut the segment to start at the snapped point
   seg2 <- cutLineDownstream(seg, p_snap)
   # how long is the line
@@ -265,7 +273,6 @@ getBuffer <- function(p, up_distance = 100, width = 25, sepaWidth = 50, shift = 
     # No need to cross junctions
     # get a point upstream
     p_upstr <- getPointUpstream(seg2, up_distance)
-    points(p_upstr, col = "orange", pch = 16, cex = 2)
     # cut line upstream at new point
     seg3 <- cutLineUpstream(seg2, p_upstr)
   }
@@ -316,11 +323,12 @@ getBuffer <- function(p, up_distance = 100, width = 25, sepaWidth = 50, shift = 
 
 
 #' @export
-findShift <- function(p, useRiverOrder = TRUE) {
+findShift <- function(p, up_distance = 100, useRiverOrder = TRUE) {
   # find the xy offset that minimises the distance between the sepa river line
   # and the river bank / line feature
   # need to first get a wide buffer idnoring river order
-  out <- getBuffer(p, up_distance = 100, width = 25, sepaWidth = 100, useRiverOrder = useRiverOrder)
+  # think about using down stream lines to help with alignment
+  out <- getBuffer(p, up_distance = up_distance, width = 25, sepaWidth = 100, useRiverOrder = useRiverOrder)
 
   xy <- list(x = coordinates(p)[,1] + c(-200, 200),
              y = coordinates(p)[,2] + c(-200, 200))
@@ -336,11 +344,6 @@ findShift <- function(p, useRiverOrder = TRUE) {
       dist <- sum(sqrt(rowSums((coordinates(sxy) - coordinates(slxy))^2)))
       dist
     }, method = "BFGS")
-
-  #  plotbase(xy, main = i)
-  #  points(lxy)
-  #  points(shift(lxy, par[1], par[2]))
-  #  lines(shift(out$riv_seg, opt$par[1], opt$par[2]), lwd = 2)
 
   opt$par
 }
@@ -417,3 +420,36 @@ openGoogleMaps <- function(point) {
   browseURL(url)
 }
 
+
+#' @export
+plotbase <- function(xy, withGoogle = FALSE, plot.rivs = TRUE, ...) {
+  # crop things for quicker plotting and computation
+  wk_area <- cropFeature(wareas, xy, buffer = 1000)
+  wk_lines <- cropFeature(wlines, xy, buffer = 1000)
+  if (plot.rivs) wk_rivs <- cropFeature(rivs, xy, buffer = 1000)
+
+  if (withGoogle) {
+    # transform to googlemap projection
+    wk_area <- spTransform(wk_area, CRS(projection(r)))
+    wk_lines <- spTransform(wk_lines, CRS(projection(r)))
+    if (plot.rivs) wk_rivs <- spTransform(wk_rivs, CRS(projection(r)))
+
+    r <- gmap(extent(spTransform(xy, CRS("+init=epsg:4326"))), type='satellite')
+    plot(r, ...)
+  }
+  wk_area@bbox <- bbox(extent(xy))
+
+  #
+  plot(wk_area, add = withGoogle, border = NA, col = col_alpha("lightblue", 0.5), ...)
+  if (plot.rivs) plot(wk_rivs, add = TRUE, col = "red", lwd = lwd)
+  plot(wk_lines, add = TRUE, col = "blue", lwd = lwd)
+}
+
+
+
+#' @export
+col_alpha <- function(col, alpha = 1) {
+  alpha <- round(pmax(0, pmin(1, as.numeric(alpha))) * 255)
+  alpha <- toupper(as.hexmode(alpha))
+  paste0(sapply(col, function(x) colorRampPalette(x)(1)), alpha)
+}

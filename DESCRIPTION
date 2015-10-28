@@ -15,7 +15,8 @@ Depends:
      raster,
      maptools,
      deldir,
-     igraph
+     igraph,
+     dismo
 Suggests:
     knitr (>= 1.8)
 License: MIT + file LICENSE

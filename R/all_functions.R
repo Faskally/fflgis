@@ -220,7 +220,7 @@ findBuffer <- function(p, up_distance = 100, width = 25, demo = FALSE)
   searchWidth <- c(7, 10, 15, 30, 50, 100, 300, 500, 500, 500)[strahler]
 
   # now get buffer
-  out <- getBuffer(p, up_distance = 100, width = 25, sepaWidth = searchWidth, shift = xyshift)
+  out <- getBuffer(p, up_distance = up_distance, width = width, sepaWidth = searchWidth, shift = xyshift, demo = demo)
 
   # add row IDs to buffer
   out <- out $ buffer_nowater

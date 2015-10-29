@@ -198,14 +198,14 @@ addOrder2DRN <- function(rivs, graph) {
 
 
 #' @export
-findBuffer <- function(p, up_distance = 100, width = 25, demo = FALSE)
+findBuffer <- function(p, up_distance = 100, width = 25, searchWidth = NULL, demo = FALSE)
 {
-  cat("finding xy shift... "); flush.console()
+  message("finding xy shift... ")
   xyshift <- findShift(p, up_distance = 200)
 
   # calculate buffer using shifted sepa line
   # set sepa line (the search) buffer width based on river order
-  cat("finding buffer... "); flush.console()
+  message("finding buffer... ")
 
   # need to find search width first
   # find closest line segment on sepa network
@@ -216,9 +216,10 @@ findBuffer <- function(p, up_distance = 100, width = 25, demo = FALSE)
   }
   seg <- rivs[ids, ]
   strahler <- seg$order
-
-  searchWidth <- c(7, 10, 15, 30, 50, 100, 300, 500, 500, 500)[strahler]
-
+  if (is.null(searchWidth)) {
+    searchWidth <- c(7, 10, 15, 30, 50)[pmin(strahler, 5)]
+  }
+  
   # now get buffer
   out <- getBuffer(p, up_distance = up_distance, width = width, sepaWidth = searchWidth, shift = xyshift, demo = demo)
 

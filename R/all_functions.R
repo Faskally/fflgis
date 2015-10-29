@@ -219,7 +219,7 @@ findBuffer <- function(p, up_distance = 100, width = 25, searchWidth = NULL, dem
   if (is.null(searchWidth)) {
     searchWidth <- c(7, 10, 15, 30, 50)[pmin(strahler, 5)]
   } else {
-    searchWidth <- searchWidth[pmin(strahler, length(searchWidth)]
+    searchWidth <- searchWidth[pmin(strahler, length(searchWidth))]
   }
   
   # now get buffer

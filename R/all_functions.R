@@ -325,10 +325,10 @@ walkUpstream <- function(p_snap, up_distance = 100, useRiverOrder = TRUE)
   seg_len <- SpatialLinesLengths(seg2) # 17.4, so we will encouter a split
   if (seg_len < up_distance) {
     # what are the next segments?
-    upVs <- names(V(g)[nei(seg@data[["start"]], mode = "in")])
+    upVs <- names(V(g)[nei(as.character(seg@data$start), mode = "in")])
     # how many segments are there?
     if (length(upVs) == 1) {
-      ids <- get.edge.ids(g, c(upVs[1], seg@data$start))
+      ids <- get.edge.ids(g, c(upVs[1], as.character(seg@data$start)))
       upseg <- rivs[ids,]
       # what if we encounter another junction?
       p_upstr <- getPointUpstream(upseg, up_distance - SpatialLinesLengths(seg2))
@@ -336,7 +336,7 @@ walkUpstream <- function(p_snap, up_distance = 100, useRiverOrder = TRUE)
       # join lines
       seg3 <- gUnion(seg2, seg3)
     } else {
-      ids <- get.edge.ids(g, c(upVs[1], seg@data$start, upVs[2], seg@data$start))
+      ids <- get.edge.ids(g, c(upVs[1], as.character(seg@data$start), upVs[2], as.character(seg@data$start)))
       upsegs <- rivs[ids,]
       # is one a higher order? (only if useRiverOrder is TRUE)
       if (!useRiverOrder | upsegs$order[1] == upsegs$order[2]) {

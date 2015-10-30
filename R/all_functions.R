@@ -221,15 +221,9 @@ findBuffer <- function(p, up_distance = 100, width = 25, searchWidth = NULL, dem
   } else {
     searchWidth <- searchWidth[pmin(strahler, length(searchWidth))]
   }
-  
+
   # now get buffer
   out <- getBuffer(p, up_distance = up_distance, width = width, sepaWidth = searchWidth, shift = xyshift, demo = demo)
-
-  # add row IDs to buffer
-  out <- out $ buffer_nowater
-  if ("SpatialPointsDataFrame" %in% is(p)) {
-    out@polygons[[1]]@ID <- rownames(p@data)
-  }
 
   out
 }
@@ -282,6 +276,24 @@ getBuffer <- function(p, up_distance = 100, width = 25, sepaWidth = 50, shift = 
 
   # substract off river areas
   buff_land <- gDifference(buff_riv, wk_area)
+
+
+  #list(buffer = buff_riv, buffer_nowater = buff_land, p_upstr = p_upstr, riv_seg = seg3,
+  #     cut_area = cut_area, cut_lines = cut_lines,  # gLineMerge(seg3)?
+  #     buffer_sepa = buff_sepa)
+
+  # prepare outputs
+  # add row IDs
+  if ("SpatialPointsDataFrame" %in% is(p)) {
+    out$buffer@polygons[[1]]@ID <- rownames(p@data)
+    out$buffer_nowater@polygons[[1]]@ID <- rownames(p@data)
+    out$cut_area@polygons[[1]]@ID <- rownames(p@data)
+    out$buffer_sepa@polygons[[1]]@ID <- rownames(p@data)
+
+    out$riv_seg@lines[[1]]@ID <- rownames(p@data)
+    out$cut_line@lines[[1]]@ID <- rownames(p@data)
+  }
+
 
   # plot results
   if (demo) {

@@ -277,12 +277,12 @@ getBuffer <- function(p, up_distance = 100, width = 25, sepaWidth = 50, shift = 
   # substract off river areas
   buff_land <- gDifference(buff_riv, wk_area)
 
-
-  #list(buffer = buff_riv, buffer_nowater = buff_land, p_upstr = p_upstr, riv_seg = seg3,
-  #     cut_area = cut_area, cut_lines = cut_lines,  # gLineMerge(seg3)?
-  #     buffer_sepa = buff_sepa)
-
   # prepare outputs
+  out <- list(buffer = buff_riv, buffer_nowater = buff_land, 
+              p_upstr = p_upstr, riv_seg = seg3,
+              cut_area = cut_area, cut_lines = cut_lines,  # gLineMerge(seg3)?
+              buffer_sepa = buff_sepa)
+
   # add row IDs
   if ("SpatialPointsDataFrame" %in% is(p)) {
     out$buffer@polygons[[1]]@ID <- rownames(p@data)
@@ -315,9 +315,7 @@ getBuffer <- function(p, up_distance = 100, width = 25, sepaWidth = 50, shift = 
   }
 
   # return stuff
-  list(buffer = buff_riv, buffer_nowater = buff_land, p_upstr = p_upstr, riv_seg = seg3,
-       cut_area = cut_area, cut_lines = cut_lines,  # gLineMerge(seg3)?
-       buffer_sepa = buff_sepa)
+  out
 }
 
 

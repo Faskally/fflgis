@@ -287,7 +287,7 @@ getBuffer <- function(p, up_distance = 100, width = 25, sepaWidth = 50, shift = 
   if ("SpatialPointsDataFrame" %in% is(p)) {
     out$buffer@polygons[[1]]@ID <- rownames(p@data)
     out$buffer_nowater@polygons[[1]]@ID <- rownames(p@data)
-    out$cut_area@polygons[[1]]@ID <- rownames(p@data)
+    if (!is.null(cut_area)) out$cut_area@polygons[[1]]@ID <- rownames(p@data)
     out$buffer_sepa@polygons[[1]]@ID <- rownames(p@data)
 
     out$riv_seg@lines[[1]]@ID <- rownames(p@data)

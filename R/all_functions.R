@@ -285,12 +285,24 @@ getBuffer <- function(p, up_distance = 100, width = 25, sepaWidth = 50, shift = 
 
   # add row IDs
   if ("SpatialPointsDataFrame" %in% is(p)) {
+    out$buffer <- gUnaryUnion(out$buffer)
     out$buffer@polygons[[1]]@ID <- rownames(p@data)
+
+    out$buffer_nowater <- gUnaryUnion(out$buffer_nowater)
     out$buffer_nowater@polygons[[1]]@ID <- rownames(p@data)
-    if (!is.null(cut_area)) out$cut_area@polygons[[1]]@ID <- rownames(p@data)
+
+    if (!is.null(cut_area)) {
+      out$cut_area <- gUnaryUnion(out$cut_area)
+      out$cut_area@polygons[[1]]@ID <- rownames(p@data)
+    }
+
+    out$buffer_sepa <- gUnaryUnion(out$buffer_sepa)
     out$buffer_sepa@polygons[[1]]@ID <- rownames(p@data)
 
+    out$riv_seg <- gLineMerge(out$riv_seg)
     out$riv_seg@lines[[1]]@ID <- rownames(p@data)
+    
+    out$cut_line <- gLineMerge(out$cut_line)
     out$cut_line@lines[[1]]@ID <- rownames(p@data)
   }
 

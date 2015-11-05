@@ -143,7 +143,7 @@ getOrder <- function(graph, plot.it = FALSE) {
 
   while(vcount(wk_graph) > 1) {
     if (i > max_order) {
-      message("Possible problem with graph: maximum order reached."
+      message("Possible problem with graph: maximum order reached.")
       return(order)
     }
   

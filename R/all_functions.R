@@ -128,7 +128,7 @@ idPsuedoSource <- function(gr, gr_full) {
 
 
 #' @export
-getOrder <- function(graph, plot.it = FALSE) {
+getOrder <- function(graph, plot.it = FALSE, max_order = 10) {
 
   stopifnot(is.named(graph))
   wk_graph <- graph

@@ -146,7 +146,7 @@ getOrder <- function(graph, plot.it = FALSE, max_order = 10) {
       message("Possible problem with graph: maximum order reached.")
       return(order)
     }
-  
+
     # lop while there are psuedo source nodes next to sources
     while(length(psourceID <- idPsuedoSource(wk_graph, graph)) > 0) {
       order[psourceID] <- i
@@ -203,10 +203,10 @@ addOrder2DRN <- function(rivs, graph) {
 
 
 #' @export
-findBuffer <- function(p, up_distance = 100, width = 25, searchWidth = NULL, demo = FALSE)
+findBuffer <- function(p, up_distance = 100, width = 25, sepaWidth = NULL, searchWidth = NULL, demo = FALSE)
 {
   message("finding xy shift... ")
-  xyshift <- findShift(p, up_distance = 200)
+  xyshift <- findShift(p, up_distance = 200, sepaWidth = sepaWidth)
 
   # calculate buffer using shifted sepa line
   # set sepa line (the search) buffer width based on river order
@@ -214,7 +214,7 @@ findBuffer <- function(p, up_distance = 100, width = 25, searchWidth = NULL, dem
 
   # need to find search width first
   # find closest line segment on sepa network
-  p_snap <- maptools::snapPointsToLines(p, rivs, 50)
+  p_snap <- maptools::snapPointsToLines(p, rivs, 100)
   ids <- as.character(unlist(p_snap@data[,names(p_snap) == "nearest_line_id"]))
   if (length(ids) > 1) {
     ids <- names(which.min(sapply(ids, function(x) gDistance(p_snap, rivs[x,]))))
@@ -255,7 +255,7 @@ getBuffer <- function(p, up_distance = 100, width = 25, sepaWidth = 50, shift = 
   wk_dtm <- crop(dtm, extent(xy))
 
   # find closest point on sepa network
-  p_snap <- maptools::snapPointsToLines(p, rivs, 50)
+  p_snap <- maptools::snapPointsToLines(p, rivs, 100)
 
   ## walk up sepa river
   out <- walkUpstream(p_snap, up_distance, useRiverOrder)
@@ -283,7 +283,7 @@ getBuffer <- function(p, up_distance = 100, width = 25, sepaWidth = 50, shift = 
   buff_land <- gDifference(buff_riv, wk_area)
 
   # prepare outputs
-  out <- list(buffer = buff_riv, buffer_nowater = buff_land, 
+  out <- list(buffer = buff_riv, buffer_nowater = buff_land,
               p_upstr = p_upstr, riv_seg = seg3,
               cut_area = cut_area, cut_lines = cut_lines,  # gLineMerge(seg3)?
               buffer_sepa = buff_sepa)
@@ -306,7 +306,7 @@ getBuffer <- function(p, up_distance = 100, width = 25, sepaWidth = 50, shift = 
 
     out$riv_seg <- gLineMerge(out$riv_seg)
     out$riv_seg@lines[[1]]@ID <- rownames(p@data)
-    
+
     out$cut_line <- gLineMerge(out$cut_line)
     out$cut_line@lines[[1]]@ID <- rownames(p@data)
   }
@@ -405,12 +405,13 @@ walkUpstream <- function(p_snap, up_distance = 100, useRiverOrder = TRUE)
 
 
 #' @export
-findShift <- function(p, up_distance = 100, useRiverOrder = TRUE) {
+findShift <- function(p, up_distance = 100, sepaWidth = NULL, useRiverOrder = TRUE) {
   # find the xy offset that minimises the distance between the sepa river line
   # and the river bank / line feature
   # need to first get a wide buffer idnoring river order
   # think about using down stream lines to help with alignment
-  out <- getBuffer(p, up_distance = up_distance, width = 25, sepaWidth = 100, useRiverOrder = useRiverOrder)
+  if (is.null(sepaWidth)) sepaWidth <- 100
+  out <- getBuffer(p, up_distance = up_distance, width = 25, sepaWidth = sepaWidth, useRiverOrder = useRiverOrder)
 
   xy <- list(x = coordinates(p)[,1] + c(-200, 200),
              y = coordinates(p)[,2] + c(-200, 200))

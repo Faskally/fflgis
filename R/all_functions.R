@@ -10,7 +10,7 @@ cutLineDownstream <- function(line, pt) {
   # find which interval the snapped point is in
   int <- min(order(dists)[1:2])
   # new coords for line (cut downstream points out)
-  cc_new <- rbind(cc[1:int,],coordinates(pt))
+  cc_new <- rbind(cc[1:(int-1),],coordinates(pt))
   SpatialLines(list(Lines(list(Line(cc_new)), ID = "A")), CRS(proj4string(line)))
 }
 
@@ -25,7 +25,7 @@ cutLineUpstream <- function(line, pt) {
   # find which interval the snapped point is in
   int <- max(order(dists)[1:2])
   # new coords for line (cut upstream points out)
-  cc_new <- rbind(coordinates(pt), cc[-(1:(int-1)),])
+  cc_new <- rbind(coordinates(pt), cc[-(1:int),])
   SpatialLines(list(Lines(list(Line(cc_new)), ID = "A")), CRS(proj4string(line)))
 }
 

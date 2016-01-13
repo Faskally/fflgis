@@ -23,7 +23,7 @@ cutLineUpstream <- function(line, pt) {
   # find the distance between the snapped point and the digitised points
   dists <- sqrt(colSums((t(cc) - c(coordinates(pt)))^2))
   # find which interval the snapped point is in
-  int <- max(order(dists)[1:2])
+  int <- min(order(dists)[1:2])
   # new coords for line (cut upstream points out)
   cc_new <- rbind(coordinates(pt), cc[-(1:int),])
   SpatialLines(list(Lines(list(Line(cc_new)), ID = "A")), CRS(proj4string(line)))

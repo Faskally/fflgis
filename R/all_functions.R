@@ -131,125 +131,6 @@ cropFeature <- function(x, xy, buffer = 0) {
 
 
 
-#' @export
-idPsuedoSource <- function(gr, gr_full) {
-  # determine if the outermost nodes are to be pruned back
-  sourceID <- character(0)
-  # get all psuedo nodes
-  psuedoID <- names(which(degree(gr, mode = "in") == 1))
-  # identify if these nodes are one down from a source
-  if (length(psuedoID) > 0) {
-    # get upstream neighbours
-    upID <- sapply(neighborhood(gr, 1, psuedoID, mode = "in"), function(x) names(x)[2])
-    # is the upID a source, if yes mark it to be removed
-    sourceID <- c(sourceID, unique(names(which(degree(gr, mode = "in")[upID] == 0))))
-  }
-  # get all braided ends
-  confluenceID <- names(which(degree(gr, mode = "in") > 1))
-  if (length(confluenceID) > 0) {
-    # what are the upstream nodes
-    upID <- lapply(neighborhood(gr, 1, confluenceID, mode = "in"), function(x) names(x)[-1])
-    # are these upstream nodes sources?
-    is.PsuedoSource <- sapply(upID, function(id) all(degree(gr, mode = "in")[id] == 0))
-    # if so are these upstream nodes connected?
-    if (any(is.PsuedoSource)) {
-      is.braid <- sapply(upID[is.PsuedoSource], function(x) {
-        if (length(x) == 1) return(TRUE) # odd one... why would this happen??
-        # how big a neighbourhood do we consider for a braid to be a braid?
-        # I have chosen 20 here... but it could easily be argued to be something less than 10...
-        upIDs <- lapply(neighborhood(gr_full, 20, x, mode = "in"), names)
-        if (length(x) == 2) {
-          length(do.call(intersect, upIDs)) > 0
-        } else {
-          # if there is atleast one unconnected node then this is
-          # a confulence,
-          # otherwise if all up nodes are connected then it is a braid.
-          upcommon <- apply(combn(1:length(upIDs[c(1,1,2)]), 2), 2, function(ids) length(do.call(intersect, upIDs[ids])))
-          all(upcommon > 0)
-        }
-      })
-      # mark confulenceIDs that are braids as sources to be removed
-      sourceID <- c(sourceID, unlist(upID[is.PsuedoSource][is.braid]))
-    }
-  }
-
-  sourceID
-}
-
-
-#' @export
-getOrder <- function(graph, plot.it = FALSE, max_order = 10) {
-
-  stopifnot(is.named(graph))
-  wk_graph <- graph
-
-  i <- 1
-  order <- rep(NA, vcount(graph))
-  names(order) <- V(graph)$name
-
-  if (plot.it && vcount(wk_graph) > 0) {
-    plot(wk_graph, vertex.label = NA, vertex.size = 0, edge.arrow.size = 0.1, main = i)
-  }
-
-  while(vcount(wk_graph) > 1) {
-    if (i > max_order) {
-      message("Possible problem with graph: maximum order reached.")
-      return(order)
-    }
-
-    # lop while there are psuedo source nodes next to sources
-    while(length(psourceID <- idPsuedoSource(wk_graph, graph)) > 0) {
-      order[psourceID] <- i
-      wk_graph <- induced.subgraph(wk_graph, !V(wk_graph)$name %in% psourceID)
-    }
-    # All remaining outer nodes are to be tagged and pruned
-    outerID <- names(which(degree(wk_graph, mode = "in") == 0))
-    order[outerID] <- i
-    wk_graph <- induced.subgraph(wk_graph, !V(wk_graph)$name %in% outerID)
-
-    if (plot.it && vcount(wk_graph) > 0) {
-      plot(wk_graph, vertex.label = NA, vertex.size = 0, edge.arrow.size = 0.1, main = i+1)
-    }
-
-    i <- i + 1
-  }
-  if (sum(is.na(order)) == 1) order[is.na(order)] <- i
-  ### DONE
-
-  order
-}
-
-
-#' @export
-addOrder2Graph <- function(graph, order) {
-  V(graph)$order <- ord
-  V(graph)$color <- V(graph)$order
-
-  # assign orders to edges
-  for (i in 1:max(V(graph)$order)) {
-    if (sum(V(graph)$order == i) > 1) {
-      E(graph)[from(V(graph)[V(graph)$order == i])]$order <- i
-    }
-  }
-
-  E(graph)$color <- rev(terrain.colors(max(E(graph)$order)))[E(graph)$order]
-  E(graph)$width <- E(graph)$order / max(E(graph)$order) * 7
-
-  graph
-}
-
-
-
-#' @export
-addOrder2DRN <- function(rivs, graph) {
-  rivs@data $ order <- E(graph)$order
-  rivs@data $ width <- E(graph)$width
-  rivs@data $ color <- E(graph)$color
-  rivs@data $ start <- ends(g, E(g))[,1]
-  rivs@data $ end <- ends(g, E(g))[,2]
-  rivs <- addUpDownNodes(rivs)
-  rivs
-}
 
 
 #' @export
@@ -586,3 +467,298 @@ col_alpha <- function(col, alpha = 1) {
   alpha <- toupper(as.hexmode(alpha))
   paste0(sapply(col, function(x) colorRampPalette(x)(1)), alpha)
 }
+
+
+
+# ---------------------------------------------------------------------------------------------------
+# added from seaDistance
+# ---------------------------------------------------------------------------------------------------
+
+#' @export
+getSeaDistance <- function(p, rivs, g) {
+  p_snap <- maptools::snapPointsToLines(p, rivs)
+
+  ids <- as.character(unlist(p_snap@data[,names(p_snap) == "nearest_line_id"]))
+  if (length(ids) > 1) {
+    ids <- names(which.min(sapply(ids, function(x) gDistance(p_snap, rivs[x,]))))
+  }
+  seg <- rivs[ids, ]
+  # cut the segment to start at the snapped point
+  seg2 <- cutLineUpstream(seg, p_snap)
+  # how long is the line
+  seg_len <- SpatialLinesLengths(seg2)
+  # now find the downstream node name
+  # convert segment to 1 edged graph and find mouth
+  gs <- makeDRNGraph(seg)
+  downV <- V(g)[names(summariseDRN(gs)$mouth)]
+
+  # get the shortest path to the mouth
+  vmouth <- summariseDRN(g) $ mouth
+  vpath <- get.shortest.paths(g, from = downV, to = vmouth) $ vpath[[1]]
+  epath <- E(g)[vpath]
+
+  # get total distance
+  dist <- seg_len + sum(epath$weight)
+
+  list(distance = dist, path = vpath)
+}
+
+
+#' @export
+getSeaDistance1 <- function(p_snap, seg) {
+
+  # cut the segment to start at the snapped point
+  seg2 <- cutLineUpstream(seg, p_snap)
+  # how long is the line
+  seg_len <- SpatialLinesLengths(seg2)
+  # now find the downstream node name
+  # convert segment to 1 edged graph and find mouth
+  updown_nodes <- getUpDownNodes(seg)
+
+  list(downV = updown_nodes$down_node, seg_len = seg_len)
+}
+
+#' @export
+getSeaDistance2 <- function(downV, g) {
+
+  # get the shortest path to the mouth
+  vmouth <- summariseDRN(g) $ mouth
+  vpath <- get.shortest.paths(g, from = downV, to = vmouth) $ vpath[[1]]
+  epath <- E(g)[vpath]
+
+  # get total distance
+  dist <- sum(epath$weight)
+
+  dist
+}
+
+
+
+#' @export
+plotPath <- function(path, g) {
+  vgraph <- induced.subgraph(g, path)
+  E(vgraph)$width <- 3
+  E(vgraph)$color <- "orange"
+  E(vgraph)$arrow.size <- 0.1
+  V(vgraph)$label <- NA
+  V(vgraph)$size <- 0.1
+
+  plot(vgraph, add=TRUE, rescale=FALSE)
+}
+
+
+
+#' @export
+idPsuedoSource <- function(gr, gr_full) {
+
+  # set local options for speed
+  opt <- igraph_opt("return.vs.es")
+  igraph.options(return.vs.es = FALSE)
+  on.exit(igraph.options(return.vs.es = opt))
+
+  # some usefull values
+  deg.gr <- degree(gr, mode = "in")
+  gr.names <- names(deg.gr)
+  # determine if the outermost nodes are to be pruned back
+  sourceID <- integer(0)
+
+  # quick check for final main stem?
+  if (sum(deg.gr == 0) == 1) {
+    # then one mouth, one source and all nodes are to be removed
+    gr.names[deg.gr == 0]
+  }
+
+  # otherwise get all psuedo nodes
+  psuedoID <- which(deg.gr == 1)
+
+  # identify if these nodes are one down from a source
+  if (length(psuedoID) > 0) {
+    # get upstream neighbours
+    upID <- sapply(neighborhood(gr, 1, psuedoID, mode = "in"), function(x) x[2])
+    # is the upID a source, if yes mark it to be removed
+    sourceID <- c(sourceID, intersect(which(deg.gr == 0), upID))
+  }
+
+  # get all braided ends
+  confluenceID <- which(deg.gr > 1)
+  if (length(confluenceID) > 0) {
+    # what are the upstream nodes
+    upID <- lapply(.Call("R_igraph_neighborhood", gr,
+                 igraph:::as.igraph.vs(gr, confluenceID) - 1, as.numeric(1),
+                 as.numeric(2), as.integer(0), PACKAGE = "igraph"),
+            function(x) x[-1] + 1)
+
+    # are these upstream nodes of confluences sources?
+    is.PsuedoSource <- sapply(upID, function(id) sum(deg.gr[id]) == 0)
+    # if so are these upstream nodes connected?
+    if (any(is.PsuedoSource)) {
+      upIDps <- upID[is.PsuedoSource]
+      len <- sapply(upIDps, length)
+      is.braid <- rep(FALSE, length(len))
+      # odd one... why would this happen??
+      if (any(len == 1)) {
+        is.braid[len == 1] <- TRUE
+      }
+
+      gr.names.map <- as.vector(V(gr_full)[gr.names])
+      if (any(len == 2)) {
+        is.braid[len == 2] <- sapply(upIDps[len == 2], function(x) {
+          upcommon <- do.call(intersect,
+                              .Call("R_igraph_neighborhood", gr_full,
+                                    gr.names.map[x] - 1, as.numeric(20),
+                                    as.numeric(2), as.integer(0), PACKAGE = "igraph"))
+          length(upcommon) > 0
+        })
+      }
+
+      if (any(len > 2)) {
+        is.braid[len > 2] <- sapply(upIDps[len > 2], function(x) {
+          upIDs <- .Call("R_igraph_neighborhood", gr_full,
+                         gr.names.map[x] - 1, as.numeric(20),
+                         as.numeric(2), as.integer(0), PACKAGE = "igraph")
+          # if there is atleast one unconnected node then this is
+          # a confulence,
+          # otherwise if all up nodes are connected then it is a braid.
+          upcommon <- apply(combn(1:length(upIDs[c(1,1,2)]), 2), 2, function(ids) length(do.call(intersect, upIDs[ids])))
+          all(upcommon > 0)
+          })
+      }
+      # mark confulenceIDs that are braids as sources to be removed
+      sourceID <- c(sourceID, unlist(upIDps[is.braid]))
+    }
+  }
+
+  gr.names[sourceID]
+}
+
+
+#' @export
+stripOrder <- function(graph) {
+
+  # set local options
+  opt <- igraph_opt("return.vs.es")
+  igraph.options(return.vs.es = TRUE)
+  on.exit(igraph.options(return.vs.es = opt))
+
+  stopifnot(is.named(graph))
+  wk_graph <- graph
+
+  # lop while there are psuedo source nodes next to sources
+  while(length(psourceID <- idPsuedoSource(wk_graph, graph)) > 0) {
+    #print(psourceID)
+    wk_graph <- induced.subgraph(wk_graph, !V(wk_graph)$name %in% psourceID)
+  }
+  # All remaining outer nodes are to be tagged and pruned
+  outerID <- names(which(degree(wk_graph, mode = "in") == 0))
+  if (length(outerID)==0) {
+    message("Possible problem with graph: no source nodes but nvertices > 1\n",
+            "This can happen if there is a cycle in the graph, or an edge pointing backwards.")
+    return(wk_graph)
+  }
+  wk_graph <- induced.subgraph(wk_graph, !V(wk_graph)$name %in% outerID)
+
+  wk_graph
+}
+
+
+
+#' @export
+getOrder <- function(graph, plot.it = FALSE, max_order = 10) {
+
+  # set local options
+  opt <- igraph_opt("return.vs.es")
+  igraph.options(return.vs.es = TRUE)
+  on.exit(igraph.options(return.vs.es = opt))
+
+  stopifnot(is.named(graph))
+  wk_graph <- graph
+
+  i <- 1
+  order <- rep(NA, vcount(graph))
+  names(order) <- V(graph)$name
+
+  if (plot.it && vcount(wk_graph) > 0) {
+    plot(wk_graph, vertex.label = NA, vertex.size = 0, edge.arrow.size = 0.1,
+         main = i, rescale = FALSE,
+         xlim = range(V(graph)$x), ylim = range(V(graph)$y))
+  }
+
+  while(vcount(wk_graph) > 1) {
+    if (i > max_order) {
+      message("Possible problem with graph: maximum order reached.  \n",
+              "Returning graph.")
+      return(wk_graph)
+    }
+
+    #print(i)
+    # lop while there are psuedo source nodes next to sources
+    while(length(psourceID <- idPsuedoSource(wk_graph, graph)) > 0) {
+      #print(psourceID)
+      order[psourceID] <- i
+      wk_graph <- induced.subgraph(wk_graph, !V(wk_graph)$name %in% psourceID)
+    }
+    # All remaining outer nodes are to be tagged and pruned
+    outerID <- names(which(degree(wk_graph, mode = "in") == 0))
+    if (length(outerID)==0) {
+      message("Possible problem with graph: no source nodes but nvertices > 1\n",
+               "This can happen if there is a cycle in the graph, or an edge pointing backwards.\n",
+               "Returning graph.")
+      return(wk_graph)
+    } #else if (length(outerID)==1) {
+      # then we are on the max order?
+    #}
+    order[outerID] <- i
+    wk_graph <- induced.subgraph(wk_graph, !V(wk_graph)$name %in% outerID)
+
+    if (plot.it && vcount(wk_graph) > 0) {
+      plot(wk_graph, vertex.label = NA, vertex.size = 0, edge.arrow.size = 0.1,
+           main = i+1, rescale = FALSE,
+           xlim = range(V(graph)$x), ylim = range(V(graph)$y))
+    }
+
+    i <- i + 1
+  }
+  if (sum(is.na(order)) == 1) order[is.na(order)] <- i
+  ### DONE
+
+  order
+}
+
+
+#' @export
+addOrder2Graph <- function(graph, order) {
+  V(graph)$order <- ord
+  V(graph)$color <- V(graph)$order
+
+  # assign orders to edges
+  for (i in 1:max(V(graph)$order)) {
+    if (sum(V(graph)$order == i) > 1) {
+      E(graph)[from(V(graph)[V(graph)$order == i])]$order <- i
+    }
+  }
+
+  E(graph)$color <- rev(terrain.colors(max(E(graph)$order)))[E(graph)$order]
+  E(graph)$width <- E(graph)$order / max(E(graph)$order) * 7
+
+  graph
+}
+
+
+
+#' @export
+addOrder2DRN <- function(rivs, graph) {
+  rivs@data $ order <- E(graph)$order
+  rivs@data $ width <- E(graph)$width
+  rivs@data $ color <- E(graph)$color
+  rivs@data $ start <- ends(g, E(g))[,1]
+  rivs@data $ end <- ends(g, E(g))[,2]
+  rivs <- addUpDownNodes(rivs)
+  rivs
+}
+
+
+
+
+
+
+

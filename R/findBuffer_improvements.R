@@ -187,7 +187,7 @@ findShift <- function(p, search_buffer = 200, rivs_buffer = 100, debug = FALSE) 
   # use buffer to crop water lines
   wk_wlines <- wlines[as.vector(rgeos::gIntersects(wlines, buf, byid = TRUE)),]
   wk_wlines <- gIntersection(wk_wlines, buf)
-  if (debug) lines(wk_wlines, col = "blue")
+  if (debug && !is.null(wk_wlines)) lines(wk_wlines, col = "blue")
 
   # get points to match with lines
   lxy <- spsample(wk_rivs, n = 100, type = "regular")
@@ -195,19 +195,19 @@ findShift <- function(p, search_buffer = 200, rivs_buffer = 100, debug = FALSE) 
 
   # optimise
   xyshift <-
-  if (!debug){
-    optim(c(0,0), function(par, ...) {
-      shifted_lxy <- shift(lxy, par[1], par[2])
-      sum(rgeos::gDistance(shifted_lxy, wk_wlines, byid = TRUE))
-    }, method = "BFGS")$par
-  } else if (debug) {
-  # if debug, then plot the shifted points at each iteration of the optimiser
-    optim(c(0,0), function(par, ...) {
-      shifted_lxy <- shift(lxy, par[1], par[2])
-      points(shifted_lxy, pch = ".")
-      sum(rgeos::gDistance(shifted_lxy, wk_wlines, byid = TRUE))
-    }, method = "BFGS")$par
-  }
+    if (!debug){
+      optim(c(0,0), function(par, ...) {
+        shifted_lxy <- shift(lxy, par[1], par[2])
+        sum(rgeos::gDistance(shifted_lxy, wk_wlines, byid = TRUE))
+      }, method = "BFGS")$par
+    } else if (debug) {
+      # if debug, then plot the shifted points at each iteration of the optimiser
+      optim(c(0,0), function(par, ...) {
+        shifted_lxy <- shift(lxy, par[1], par[2])
+        points(shifted_lxy, pch = ".")
+        sum(rgeos::gDistance(shifted_lxy, wk_wlines, byid = TRUE))
+      }, method = "BFGS")$par
+    }
 
   if (debug) {
     shifted_wk_rivs <- shift(wk_rivs, xyshift[1], xyshift[2])
@@ -216,6 +216,8 @@ findShift <- function(p, search_buffer = 200, rivs_buffer = 100, debug = FALSE) 
 
   opt$par
 }
+
+
 
 
 

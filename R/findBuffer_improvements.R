@@ -1,40 +1,170 @@
+
 #' @export
-findBuffer <- function(p, up_distance = 100, width = 25, sepaWidth = NULL, searchWidth = NULL, demo = FALSE)
+findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
+                       search_width = NULL, debug = FALSE)
 {
+  # expects to have the following objects available:
+  #   rivs
+  #   g
+  #   wareas
+  #   wlines
+  #   dtm
+
+  # setup
+  if (is.null(search_width)) search_width <- c(7, 10, 15, 30, 50)
+
   # this is the main algorithm for finding buffers
   message("finding xy shift... ")
-  xyshift <- findShift(p, up_distance = 200, sepaWidth = sepaWidth)
-  
-  # calculate buffer using shifted sepa line
-  #message("aligning sepa river to master map ... ")
-  xy <- list(x = coordinates(p)[,1] + c(-200, 200),
-             y = coordinates(p)[,2] + c(-200, 200))
-  wk_rivs <- cropFeature(rivs, xy, buffer = 500)
-  #wk_rivs_shift <- shift(wk_rivs, xyshift[1], xyshift[2])
-    
-  # set sepa line (the search) buffer width based on river order
-  message("finding buffer... ")
-  
-  # need to find search width first
-  # find closest line segment on shifted sepa network
+  xyshift <- findShift(p, search_buffer = search_buffer, rivs_buffer = 100, debug = debug)
+
+  # subset rivs and shift
+  # set bbox cover upstream distance*1.5 to be on the safe side
+  bbox <- gBuffer(p, width = max(search_buffer, up_distance*1.5))
+  if (debug) plot(bbox, border = grey(0.7))
+
+  wk_rivs <- rivs[as.vector(rgeos::gIntersects(rivs, bbox, byid = TRUE)),]
+  wk_rivs <- shift(wk_rivs, xyshift[1], xyshift[2])
+  if (debug) lines(wk_rivs)
+
+  # set sepa line buffer width based on river order
+  # snap point to shifted river segment
   p_snap <- maptools::snapPointsToLines(p, wk_rivs) # no limit
+  if (debug) points(p_snap, pch = 16, cex = 0.5, col = "red")
+
+  # find search width first by strahler order:
+  #   find line on river to get strahler order from
   ids <- as.character(unlist(p_snap@data[,names(p_snap) == "nearest_line_id"]))
   if (length(ids) > 1) {
-    ids <- names(which.min(sapply(ids, function(x) gDistance(p_snap, rivs[x,]))))
+    ids <- names(which.min(sapply(ids, function(x) gDistance(p_snap, wk_rivs[x,]))))
   }
-  seg <- rivs[ids, ]
-  strahler <- seg$order
-  if (is.null(searchWidth)) {
-    searchWidth <- c(7, 10, 15, 30, 50)[pmin(strahler, 5)]
-  } else {
-    searchWidth <- searchWidth[pmin(strahler, length(searchWidth))]
-  }
-  
+  strahler <- wk_rivs[ids, ]$order
+  search_width <- search_width[pmin(strahler, length(search_width))]
+
+  message("finding buffer... ")
   # now get buffer
-  out <- getBuffer(p, up_distance = up_distance, width = width, sepaWidth = searchWidth, shift = xyshift, demo = demo)
-  
+
+  # crop main datasets to size
+  # use buffer to crop water lines
+  wk_wlines <- wlines[as.vector(rgeos::gIntersects(wlines, bbox, byid = TRUE)),]
+  wk_wlines <- gIntersection(wk_wlines, bbox)
+  if (debug && !is.null(wk_wlines)) lines(wk_wlines, col = "blue")
+
+  # use buffer to crop water areas
+  wk_wareas <- wlines[as.vector(rgeos::gIntersects(wareas, bbox, byid = TRUE)),]
+  wk_wareas <- gIntersection(wk_wareas, bbox)
+  if (debug && !is.null(wk_wareas)) plot(wk_wareas, col = "blue", add = TRUE)
+
+  wk_dtm <- crop(dtm, bbox)
+
+  ## walk up sepa river
+  out <- walkUpstream(p_snap, wk_rivs, up_distance, useRiverOrder)
+  p_upstr <- out$p_upstr
+  seg3 <- out$seg
+  if (debug) {
+    points(p_upstr, pch = 16, cex = 0.5, col = "orange")
+    lines(seg3, lwd = 2)
+  }
+  # was p_snap a source?
+  if (SpatialLinesLengths(seg3) == 0) {
+    stop("The sample point snapped exactly to a source...")
+  }
+
+  # cut water polygon boundary here
+  # tricky - one solution is
+  buff_sepa <- rgeos::gBuffer(seg3, width = search_width, byid = FALSE, capStyle = "FLAT")
+  if (debug) plot(buff_sepa, add = TRUE, border = grey(0.7))
+  # start new plot
+  if (debug) {
+    plot(buff_sepa, border = grey(0.7))
+    points(p_snap, col = "red", pch = 16, cex = 0.5)
+    points(p_upstr, col = "orange", pch = 16, cex = 0.5)
+    lines(seg3, col = grey(0.7))
+  }
+
+  # cut out water polygons MM data
+  if (!is.null(wk_wareas)) {
+    cut_wareas <- rgeos::gIntersection(buff_sepa, wk_wareas, byid=TRUE, drop_lower_td=TRUE)
+    if (debug) plot(cut_wareas, col = "lightblue", add = TRUE)
+  } else {
+    cut_wareas <- NULL
+  }
+
+  # cut out water lines MM data
+  if (!is.null(wk_lines)) {
+    cut_wlines <- rgeos::gIntersection(buff_sepa, wk_wlines, byid=TRUE, drop_lower_td=TRUE)
+    if (debug) lines(cut_wlines, col = "blue")
+  } else {
+    cut_wlines <- NULL
+  }
+
+  if (is.null(cut_wareas) & is.null(cut_wlines)) {
+    # there are no MM_water bodies near by... this needs to be flagged somehow...
+    stop("no MM data for this SEPA river.")
+  }
+
+  # now add a buffer to the river segment
+  buff_riva <- if (is.null(cut_wareas)) NULL else rgeos::gBuffer(cut_wareas, width = width, byid = FALSE)
+  buff_rivl <- rgeos::gBuffer(cut_wlines, width = width, byid = FALSE)
+  # join the buffers incase there is a slight discrepancy
+  buff_riv <- if (is.null(buff_riva)) buff_rivl else  gUnion(buff_riva, buff_rivl)
+  if (debug) plot(buff_riv, col = col_alpha("orange", 0.2), add = TRUE)
+
+  # --------------------------------------------------------
+  # --------------------------------------------------------
+  #                       TODO
+  # now we need to take this buffer and recalculate the river segment and wlines, warea etc
+  #
+  # --------------------------------------------------------
+  # --------------------------------------------------------
+
+  # substract off river areas
+  buff_land <- if (is.null(wk_wareas)) buff_riv else rgeos::gDifference(buff_riv, wk_wareas)
+  if (debug) plot(buff_land, col = col_alpha("lightgreen", 0.2), add = TRUE)
+
+  # prepare outputs
+  out <- list(buffer = buff_riv, buffer_nowater = buff_land,
+              p_upstr = p_upstr, riv_seg = seg3,
+              cut_area = cut_wareas, cut_lines = cut_wlines,
+              buffer_sepa = buff_sepa)
+
+  # add row IDs
+  if ("SpatialPointsDataFrame" %in% is(p)) {
+    out$buffer <- gUnaryUnion(out$buffer)
+    out$buffer@polygons[[1]]@ID <- rownames(p@data)
+
+    out$buffer_nowater <- gUnaryUnion(out$buffer_nowater)
+    out$buffer_nowater@polygons[[1]]@ID <- rownames(p@data)
+
+    if (!is.null(cut_area)) {
+      out$cut_area <- gUnaryUnion(out$cut_area)
+      out$cut_area@polygons[[1]]@ID <- rownames(p@data)
+    }
+
+    out$buffer_sepa <- gUnaryUnion(out$buffer_sepa)
+    out$buffer_sepa@polygons[[1]]@ID <- rownames(p@data)
+
+    out$riv_seg <- gLineMerge(out$riv_seg)
+    out$riv_seg@lines[[1]]@ID <- rownames(p@data)
+
+    if (!is.null(out$cut_lines)) {
+      mcut_lines <- try(gLineMerge(out$cut_lines), silent = TRUE)
+      if(inherits(mcut_lines, "try-error")) {
+        # weird error - not sure why this is happening...
+        # ctm == 520 site == 16, siteID == 495
+        out$cut_lines <- NULL
+      } else {
+        out$cut_lines <- mcut_lines
+        out$cut_lines@lines[[1]]@ID <- rownames(p@data)
+      }
+    }
+  }
+
+  # return stuff
   out
+
 }
+
+
 
 
 
@@ -89,124 +219,6 @@ findShift <- function(p, search_buffer = 200, rivs_buffer = 100, debug = FALSE) 
 
 
 
-
-#' @export
-getBuffer <- function(p, up_distance = 100, width = 25, sepaWidth = 50, shift = c(0,0), useRiverOrder = TRUE, demo = FALSE) {
-  # expects to have the following objects available:
-  #   rivs
-  #   g
-  #   wareas
-  #   wlines
-  #   dtm
-  
-  # work within a +- 200m square about site location
-  xy <- list(x = coordinates(p)[,1] + c(-200, 200),
-             y = coordinates(p)[,2] + c(-200, 200))
-  
-  # crop main datasets to size
-  wk_area <- cropFeature(wareas, xy, buffer = 500)
-  wk_lines <- cropFeature(wlines, xy, buffer = 500)
-  wk_rivs <- cropFeature(rivs, xy, buffer = 500)
-  wk_dtm <- crop(dtm, extent(xy))
-  
-  # find closest point on sepa network
-  p_snap <- maptools::snapPointsToLines(p, rivs) # no limit!
-  
-  ## walk up sepa river
-  out <- walkUpstream(p_snap, up_distance, useRiverOrder)
-  p_upstr <- out$p_upstr
-  seg3 <- out$seg
-  # was p_snap a source?
-  if (SpatialLinesLengths(seg3) == 0) {
-    stop("The sample point snapped exactly to a source...")
-  }
-  
-  # cut water polygon boundary here
-  # tricky - one solution is
-  seg3_shift <- shift(gLineMerge(seg3), shift[1], shift[2])
-  buff_sepa <- rgeos::gBuffer(seg3_shift, width = sepaWidth, byid = FALSE, capStyle = "FLAT")
-  
-  cut_area <- rgeos::gIntersection(buff_sepa, wk_area, byid=TRUE, drop_lower_td=TRUE)
-  cut_lines <- rgeos::gIntersection(buff_sepa, wk_lines, byid=TRUE, drop_lower_td=TRUE)
-  
-  if (is.null(cut_area) & is.null(cut_lines)) {
-    # there are no MM_water bodies near by... this needs to be flagged somehow...
-    stop("no MM data for this SEPA river.")
-  }
-  
-  # now add a buffer to the river segment
-  buff_riva <- if (is.null(cut_area)) NULL else rgeos::gBuffer(cut_area, width = width, byid = FALSE)
-  
-  # get buffer based on OS lines
-  buff_rivl <- rgeos::gBuffer(cut_lines, width = width, byid = FALSE)
-  
-  # join the buffers incase there is a slight discrepancy
-  buff_riv <- if (is.null(buff_riva)) buff_rivl else  gUnion(buff_riva, buff_rivl)
-  
-  # substract off river areas
-  buff_land <- gDifference(buff_riv, wk_area)
-  
-  # prepare outputs
-  out <- list(buffer = buff_riv, buffer_nowater = buff_land,
-              p_upstr = p_upstr, riv_seg = seg3,
-              cut_area = cut_area, cut_lines = cut_lines,  # gLineMerge(seg3)?
-              buffer_sepa = buff_sepa)
-  
-  # add row IDs
-  if ("SpatialPointsDataFrame" %in% is(p)) {
-    out$buffer <- gUnaryUnion(out$buffer)
-    out$buffer@polygons[[1]]@ID <- rownames(p@data)
-    
-    out$buffer_nowater <- gUnaryUnion(out$buffer_nowater)
-    out$buffer_nowater@polygons[[1]]@ID <- rownames(p@data)
-    
-    if (!is.null(cut_area)) {
-      out$cut_area <- gUnaryUnion(out$cut_area)
-      out$cut_area@polygons[[1]]@ID <- rownames(p@data)
-    }
-    
-    out$buffer_sepa <- gUnaryUnion(out$buffer_sepa)
-    out$buffer_sepa@polygons[[1]]@ID <- rownames(p@data)
-    
-    out$riv_seg <- gLineMerge(out$riv_seg)
-    out$riv_seg@lines[[1]]@ID <- rownames(p@data)
-    
-    if (!is.null(out$cut_lines)) {
-      mcut_lines <- try(gLineMerge(out$cut_lines), silent = TRUE)
-      if(inherits(mcut_lines, "try-error")) {
-        # weird error - not sure why this is happening...
-        # ctm == 520 site == 16, siteID == 495
-        out$cut_lines <- NULL
-      } else {
-        out$cut_lines <- mcut_lines
-        out$cut_lines@lines[[1]]@ID <- rownames(p@data)
-      }
-    }
-  }
-  
-  
-  # plot results
-  if (demo) {
-    plot(wk_dtm)
-    plot(wk_area, add = TRUE, border = NA, col = col_alpha("lightblue", 0.5))
-    plot(wk_rivs, add = TRUE, col = "red", lwd = 2)
-    plot(wk_lines, add = TRUE, col = "blue")
-    points(p_snap, col = "gold", pch = 16, cex = 2)
-    points(p_upstr, col = "orange", pch = 16, cex = 2)
-    plot(seg3, col = "brown", add = TRUE, lwd = 3)
-    plot(buff_sepa, col = paste0(grey(0.5), "22"), add = TRUE)
-    plot(cut_area, add = TRUE, col = "purple")
-    plot(cut_lines, add = TRUE, col = "purple", lwd = 2)
-    plot(buff_riva, add = TRUE, col = col_alpha(grey(0.5), 0.5) , border = "green", lwd = 2)
-    plot(cut_area, col = "red", add = TRUE)
-    plot(buff_rivl, add = TRUE, col = col_alpha(grey(0.5), 0.5), border = "green", lwd = 2)
-    plot(cut_lines, col = "pink", add = TRUE)
-    plot(buff_riv, add = TRUE, col = col_alpha(grey(0.5), 0.5), border = "cyan", lwd = 2)
-  }
-  
-  # return stuff
-  out
-}
 
 
 #' @export

@@ -37,30 +37,53 @@ findBuffer <- function(p, up_distance = 100, width = 25, sepaWidth = NULL, searc
 }
 
 
+
 #' @export
-findShift <- function(p, up_distance = 100, sepaWidth = NULL, useRiverOrder = TRUE) {
+findShift <- function(p, search_buffer = 200, rivs_buffer = 100, debug = FALSE) {
   # find the xy offset that minimises the distance between the sepa river line
   # and the river bank / line feature
-  # need to first get a wide buffer ignoring river order
-  # think about using down stream lines to help with alignment
-  if (is.null(sepaWidth)) sepaWidth <- 100
-  out <- getBuffer(p, up_distance = up_distance, width = 25, sepaWidth = sepaWidth, useRiverOrder = useRiverOrder)
-  
-  xy <- list(x = coordinates(p)[,1] + c(-200, 200),
-             y = coordinates(p)[,2] + c(-200, 200))
-  
+  bbox <- gBuffer(p, width = search_buffer)
+
+  # find first draft of river lines to get a buffer
+  wk_rivs <- rivs[as.vector(rgeos::gIntersects(rivs, bbox, byid = TRUE)),]
+  buf <- buffer(wk_rivs, width = rivs_buffer)
+  if (debug) plot(buf, col = col_alpha("orange", 0.2))
+
+  # use buffer to crop rivs
+  wk_rivs <- rivs[as.vector(rgeos::gIntersects(rivs, buf, byid = TRUE)),]
+  wk_rivs <- gIntersection(wk_rivs, buf)
+  if (debug) lines(wk_rivs)
+
+  # use buffer to crop water lines
+  wk_wlines <- wlines[as.vector(rgeos::gIntersects(wlines, buf, byid = TRUE)),]
+  wk_wlines <- gIntersection(wk_wlines, buf)
+  if (debug) lines(wk_wlines, col = "blue")
+
   # get points to match with lines
-  lxy <- spsample(out $ riv_seg, n = 20, type = "regular")
-  
+  lxy <- spsample(wk_rivs, n = 100, type = "regular")
+  if (debug) points(lxy, pch = 16, cex = 0.5, col = "red")
+
   # optimise
-  opt <-
+  xyshift <-
+  if (!debug){
     optim(c(0,0), function(par, ...) {
-      slxy <- shift(lxy, par[1], par[2])
-      sxy <- snapPointsToLines(slxy, out$cut_lines)
-      dist <- sum(sqrt(rowSums((coordinates(sxy) - coordinates(slxy))^2)))
-      dist
-    }, method = "BFGS")
-  
+      shifted_lxy <- shift(lxy, par[1], par[2])
+      sum(rgeos::gDistance(shifted_lxy, wk_wlines, byid = TRUE))
+    }, method = "BFGS")$par
+  } else if (debug) {
+  # if debug, then plot the shifted points at each iteration of the optimiser
+    optim(c(0,0), function(par, ...) {
+      shifted_lxy <- shift(lxy, par[1], par[2])
+      points(shifted_lxy, pch = ".")
+      sum(rgeos::gDistance(shifted_lxy, wk_wlines, byid = TRUE))
+    }, method = "BFGS")$par
+  }
+
+  if (debug) {
+    shifted_wk_rivs <- shift(wk_rivs, xyshift[1], xyshift[2])
+    lines(shifted_wk_rivs, col = "purple", lwd = 2)
+  }
+
   opt$par
 }
 

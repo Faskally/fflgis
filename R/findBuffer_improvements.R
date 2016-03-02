@@ -135,7 +135,7 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
     out$buffer_nowater <- gUnaryUnion(out$buffer_nowater)
     out$buffer_nowater@polygons[[1]]@ID <- rownames(p@data)
 
-    if (!is.null(cut_area)) {
+    if (!is.null(cut_wareas)) {
       out$cut_area <- gUnaryUnion(out$cut_area)
       out$cut_area@polygons[[1]]@ID <- rownames(p@data)
     }
@@ -146,7 +146,7 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
     out$riv_seg <- gLineMerge(out$riv_seg)
     out$riv_seg@lines[[1]]@ID <- rownames(p@data)
 
-    if (!is.null(out$cut_lines)) {
+    if (!is.null(out$cut_wlines)) {
       mcut_lines <- try(gLineMerge(out$cut_lines), silent = TRUE)
       if(inherits(mcut_lines, "try-error")) {
         # weird error - not sure why this is happening...

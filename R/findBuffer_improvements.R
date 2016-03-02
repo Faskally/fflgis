@@ -261,8 +261,8 @@ walkUpstream <- function(p_snap, wk_rivs, up_distance = 100, useRiverOrder = TRU
 
     } else if (length(upVs) == 1)
     {
-      ids <- get.edge.ids(g, c(upVs[1], as.character(seg@data$start)))
-      upseg <- rivs[ids,]
+      ids <- get.edge.ids(wk_g, c(upVs[1], as.character(seg@data$start)))
+      upseg <- wk_rivs[ids,]
       # what if we encounter another junction?
       p_upstr <- getPointUpstream(upseg, up_distance - SpatialLinesLengths(seg2))
       seg3 <- cutLineUpstream(upseg, p_upstr)

@@ -80,7 +80,7 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
   if (debug) plot(buff_sepa, add = TRUE, border = grey(0.7))
   # start new plot
   if (debug) {
-    plot(buff_sepa, border = grey(0.7))
+    plot(buff_sepa, border = grey(0.7), main = paste0("buffers using strahler: ", strahler))
     points(p_snap, col = "red", pch = 16, cex = 0.5)
     points(p_upstr, col = "orange", pch = 16, cex = 0.5)
     lines(seg3, col = grey(0.7))
@@ -182,7 +182,7 @@ findShift <- function(p, search_buffer = 200, rivs_buffer = 100, debug = FALSE) 
   # find first draft of river lines to get a buffer
   wk_rivs <- rivs[as.vector(rgeos::gIntersects(rivs, bbox, byid = TRUE)),]
   buf <- buffer(wk_rivs, width = rivs_buffer)
-  if (debug) plot(buf, col = col_alpha("orange", 0.2))
+  if (debug) plot(buf, col = col_alpha("orange", 0.2), main = "finding xyshift")
 
   # use buffer to crop rivs
   wk_rivs <- rivs[as.vector(rgeos::gIntersects(rivs, buf, byid = TRUE)),]

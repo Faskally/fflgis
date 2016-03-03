@@ -95,7 +95,7 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
   }
 
   # cut out water lines MM data
-  if (!is.null(wk_lines)) {
+  if (!is.null(wk_wlines)) {
     cut_wlines <- rgeos::gIntersection(buff_sepa, wk_wlines, byid=TRUE, drop_lower_td=TRUE)
     if (debug) lines(cut_wlines, col = "blue")
   } else {

@@ -219,7 +219,7 @@ findShift <- function(p, search_buffer = 200, rivs_buffer = 100, debug = FALSE) 
     lines(shifted_wk_rivs, col = "purple", lwd = 2)
   }
 
-  opt$par
+  xyshift
 }
 
 

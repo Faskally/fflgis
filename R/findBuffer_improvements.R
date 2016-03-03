@@ -62,7 +62,7 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
   wk_dtm <- crop(dtm, bbox)
 
   ## walk up sepa river
-  out <- walkUpstream(p_snap, wk_rivs, up_distance, useRiverOrder)
+  out <- walkUpstream(p_snap, wk_rivs, up_distance)
   p_upstr <- out$p_upstr
   seg3 <- out$seg
   if (debug) {

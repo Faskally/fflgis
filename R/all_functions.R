@@ -496,7 +496,7 @@ getOrder <- function(graph, plot.it = FALSE, max_order = 10) {
 
 #' @export
 addOrder2Graph <- function(graph, order) {
-  V(graph)$order <- ord
+  V(graph)$order <- order
   V(graph)$color <- V(graph)$order
 
   # assign orders to edges

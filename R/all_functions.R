@@ -528,6 +528,55 @@ addOrder2DRN <- function(rivs, graph) {
 
 
 
+#' @export
+addSite2DRN <- function(site, rivs) {
+  # find segment to split
+  site <- maptools::snapPointsToLines(site, rivs)
+
+  # is site already a node?
+  if (paste(coordinates(site), collapse = ":") %in% unlist(getUpDownNodes(rivs))) {
+    return(rivs)
+  }
+
+  # strip off river lines that we will keep
+  keep <- rownames(rivs@data) != paste(site $ nearest_line_id)
+  rivs_keep <- rivs[keep,]
+  # rename IDS
+  spChFIDs(rivs_keep) <- 1:length(rivs_keep)
+
+  # split segement:
+  rid <- paste(site$nearest_line_id)
+  out <- c(cutLineDownstream(rivs[rid,], site), cutLineUpstream(rivs[rid,], site))
+  # give unique ids and merge
+  out <- lapply(1:2, function(i) {out[[i]]@lines[[1]]@ID <- paste(i); out[[i]]})
+  out <- do.call(rbind, out)
+  # change ids
+  spChFIDs(out) <- 1:2 + length(rivs_keep)
+
+  # get correct data.frame to go with new spatial lines
+  newdf <- rivs[paste(site$nearest_line_id),]@data[c(1,1),]
+  row.names(newdf) <- 1:2 + length(rivs_keep)
+  message("TODO: Add up down nodes to dataframe!! \n Also keep note of added sites as sample sites, and add all info in site")
+  # ----------------------------------------------
+  ## TODO:
+  #   update up_nodes, down_nodes
+  # ----------------------------------------------
+
+  out <- SpatialLinesDataFrame(out, newdf)
+
+  # now bind these segments onto the river
+  rbind(rivs_keep, out)
+}
+
+#' @export
+addSites2DRN <- function(sites, rivs) {
+  wk_sites <- SpatialPoints(unique(coordinates(sites)))
+  crs(wk_sites) <- crs(sites)
+  for (i in 1:length(wk_sites)) {
+    rivs <- addSite2DRN(wk_sites[i,], rivs)
+  }
+  rivs
+}
 
 
 

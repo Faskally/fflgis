@@ -170,7 +170,9 @@ getUpDownNodes <- function(rivs) {
 
 #' @export
 addUpDownNodes <- function(rivs) {
-  rivs@data <- cbind(rivs@data, getUpDownNodes(rivs))
+  upDownNodes <- getUpDownNodes(rivs)
+  rivs@data$up_node <- upDownNodes$up_node
+  rivs@data$down_node <- upDownNodes$down_node
   rivs
 }
 

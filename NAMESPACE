@@ -2,6 +2,8 @@
 
 export(addOrder2DRN)
 export(addOrder2Graph)
+export(addSite2DRN)
+export(addSites2DRN)
 export(addUpDownNodes)
 export(col_alpha)
 export(cropFeature)

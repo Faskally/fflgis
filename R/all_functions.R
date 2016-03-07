@@ -61,7 +61,7 @@ getPointUpstream <- function(line, dist) {
 # the next two functions are for aplpying to a spatial lines dataframe
 # and getting a points a distance upstream
 #' @export
-getPointUpstream <- function (sldf, distance = 50) 
+getPointUpstream <- function (sldf, distance = 50)
 {
   stopifnot(is.projected(sldf))
   Lns <- slot(sldf, "lines")
@@ -88,7 +88,7 @@ getPointUpstream <- function (sldf, distance = 50)
 }
 
 #' @export
-getPoint <- function(coords, distance) 
+getPoint <- function(coords, distance)
 {
   coords <- coords[nrow(coords):1,]
   dist <- sqrt((diff(coords[, 1])^2 + (diff(coords[, 2]))^2))
@@ -205,7 +205,7 @@ openGoogleMaps <- function(point) {
 
 
 #' @export
-plotbase <- function(xy, withGoogle = FALSE, plot.rivs = TRUE, lwd = 2, ...) {
+plotbase <- function(xy, withGoogle = FALSE, plot.rivs = TRUE, lwd = 2, wareas, wlines, rivs, ...) {
   # crop things for quicker plotting and computation
   wk_area <- cropFeature(wareas, xy, buffer = 1000)
   wk_lines <- cropFeature(wlines, xy, buffer = 1000)
@@ -568,6 +568,8 @@ addSite2DRN <- function(site, rivs) {
   rbind(rivs_keep, out)
 }
 
+
+
 #' @export
 addSites2DRN <- function(sites, rivs) {
   wk_sites <- SpatialPoints(unique(coordinates(sites)))
@@ -577,6 +579,7 @@ addSites2DRN <- function(sites, rivs) {
   }
   rivs
 }
+
 
 
 

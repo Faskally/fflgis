@@ -54,8 +54,6 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
   wk_wareas <- gIntersection(wk_wareas, bbox)
   if (debug && !is.null(wk_wareas)) plot(wk_wareas, col = "blue", add = TRUE)
 
-  wk_dtm <- crop(dtm, bbox)
-
   ## walk up sepa river
   out <- walkUpstream(p_snap, wk_rivs, up_distance)
   p_upstr <- out$p_upstr
@@ -177,7 +175,7 @@ findShift <- function(p, search_buffer = 200, rivs_buffer = 100, debug = FALSE,
 
   # find first draft of river lines to get a buffer
   wk_rivs <- rivs[as.vector(rgeos::gIntersects(rivs, bbox, byid = TRUE)),]
-  buf <- buffer(wk_rivs, width = rivs_buffer)
+  buf <- gBuffer(wk_rivs, width = rivs_buffer)
   if (debug) plot(buf, col = col_alpha("orange", 0.2), main = "finding xyshift")
 
   # use buffer to crop rivs

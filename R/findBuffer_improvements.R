@@ -6,21 +6,16 @@
 
 #' @export
 findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
-                       search_width = NULL, debug = FALSE)
+                       search_width = NULL, debug = FALSE,
+                       rivs, g, wareas, wlines)
 {
-  # expects to have the following objects available:
-  #   rivs
-  #   g
-  #   wareas
-  #   wlines
-  #   dtm
-
   # setup
   if (is.null(search_width)) search_width <- c(7, 10, 15, 30, 50)
 
   # this is the main algorithm for finding buffers
   message("finding xy shift... ")
-  xyshift <- findShift(p, search_buffer = search_buffer, rivs_buffer = 100, debug = debug)
+  xyshift <- findShift(p, search_buffer = search_buffer, rivs_buffer = 100, debug = debug,
+                       rivs = rivs, g = g, wareas = wareas, wlines = wlines)
 
   # subset rivs and shift
   # set bbox cover upstream distance*1.5 to be on the safe side
@@ -174,7 +169,8 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
 
 
 #' @export
-findShift <- function(p, search_buffer = 200, rivs_buffer = 100, debug = FALSE) {
+findShift <- function(p, search_buffer = 200, rivs_buffer = 100, debug = FALSE,
+                      rivs, g, wareas, wlines) {
   # find the xy offset that minimises the distance between the sepa river line
   # and the river bank / line feature
   bbox <- gBuffer(p, width = search_buffer)

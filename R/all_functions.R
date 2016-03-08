@@ -528,25 +528,26 @@ addOrder2DRN <- function(rivs, graph) {
 
 
 
-#' @export
-addSite2DRN <- function(site, rivs) {
+addSite2DRN <- function(site, rivs, site_name) {
   # find segment to split
-  site <- maptools::snapPointsToLines(site, rivs)
+  snap_site <- snapPointsToLines(site, rivs)
 
   # is site already a node?
-  if (paste(coordinates(site), collapse = ":") %in% unlist(getUpDownNodes(rivs))) {
+  if (paste(coordinates(snap_site), collapse = ":") %in% unlist(getUpDownNodes(rivs))) {
+    # TODO  if node is network node add site data:
+    message("skipping site ", paste(site_name, collapse = "; "))
     return(rivs)
   }
 
   # strip off river lines that we will keep
-  keep <- rownames(rivs@data) != paste(site $ nearest_line_id)
+  keep <- rownames(rivs@data) != paste(snap_site $ nearest_line_id)
   rivs_keep <- rivs[keep,]
   # rename IDS
   spChFIDs(rivs_keep) <- 1:length(rivs_keep)
 
   # split segement:
-  rid <- paste(site$nearest_line_id)
-  out <- c(cutLineDownstream(rivs[rid,], site), cutLineUpstream(rivs[rid,], site))
+  rid <- paste(snap_site$nearest_line_id)
+  out <- c(cutLineDownstream(rivs[rid,], snap_site), cutLineUpstream(rivs[rid,], snap_site))
   # give unique ids and merge
   out <- lapply(1:2, function(i) {out[[i]]@lines[[1]]@ID <- paste(i); out[[i]]})
   out <- do.call(rbind, out)
@@ -554,13 +555,18 @@ addSite2DRN <- function(site, rivs) {
   spChFIDs(out) <- 1:2 + length(rivs_keep)
 
   # get correct data.frame to go with new spatial lines
-  newdf <- rivs[paste(site$nearest_line_id),]@data[c(1,1),]
+  newdf <- rivs[paste(snap_site$nearest_line_id),]@data[c(1,1),]
+  if ("up_node" %in% names(newdf)) {
+    newdf $ up_node <- getUpDownNodes(out)$up_node
+    newdf $ down_node <- getUpDownNodes(out)$down_node
+  }
+  if ("start" %in% names(newdf)) {
+    newdf $ start <- newdf $ up_node
+    newdf $ end <- newdf $ down_node
+  }
+  newdf$site.name[2] <- site_name
+
   row.names(newdf) <- 1:2 + length(rivs_keep)
-  message("TODO: Add up down nodes to dataframe!! \n Also keep note of added sites as sample sites, and add all info in site")
-  # ----------------------------------------------
-  ## TODO:
-  #   update up_nodes, down_nodes
-  # ----------------------------------------------
 
   out <- SpatialLinesDataFrame(out, newdf)
 
@@ -571,11 +577,12 @@ addSite2DRN <- function(site, rivs) {
 
 
 #' @export
-addSites2DRN <- function(sites, rivs) {
-  wk_sites <- SpatialPoints(unique(coordinates(sites)))
-  crs(wk_sites) <- crs(sites)
-  for (i in 1:length(wk_sites)) {
-    rivs <- addSite2DRN(wk_sites[i,], rivs)
+addSites2DRN <- function(sites, rivs, site_names) {
+  message("Make sure that sites locations are unique if possible. \nOtherwise site names could be overwritten.\n")
+  # if rivs does not have site columns in dataframe, then add them as NAs
+  rivs$site.name = ""
+  for (i in 1:length(sites)) {
+    rivs <- addSite2DRN(sites[i,], rivs, site_names[i])
   }
   rivs
 }

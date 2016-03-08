@@ -9,8 +9,7 @@ Description: A set of functions to help with the fitting of
     as possible to make is easy to see how GMRFs are constructed.
 Depends:
     R (>= 3.1.0),
-    igraph
-Imports:
+    igraph,
     sp,
     rgeos,
     raster,

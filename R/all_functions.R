@@ -581,6 +581,8 @@ addSites2DRN <- function(sites, rivs, site_names) {
   message("Make sure that sites locations are unique if possible. \nOtherwise site names could be overwritten.\n")
   # if rivs does not have site columns in dataframe, then add them as NAs
   rivs$site.name = ""
+  # get site name from sites data
+  site_names <- sites[[site_names]]
   for (i in 1:length(sites)) {
     rivs <- addSite2DRN(sites[i,], rivs, site_names[i])
   }

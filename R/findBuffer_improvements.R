@@ -46,12 +46,20 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
   # crop main datasets to size
   # use buffer to crop water lines
   wk_wlines <- wlines[as.vector(rgeos::gIntersects(wlines, bbox, byid = TRUE)),]
-  wk_wlines <- gIntersection(wk_wlines, bbox)
+  if (length(wk_wlines) == 0) {
+    wk_wlines <- NULL
+  } else {
+    wk_wlines <- gIntersection(wk_wlines, bbox)
+  }
   if (debug && !is.null(wk_wlines)) lines(wk_wlines, col = "blue")
 
   # use buffer to crop water areas
   wk_wareas <- wareas[as.vector(rgeos::gIntersects(wareas, bbox, byid = TRUE)),]
-  wk_wareas <- gIntersection(wk_wareas, bbox)
+  if (length(wk_wareas) == 0) {
+    wk_wareas <- NULL
+  } else {
+    wk_wareas <- gIntersection(wk_wareas, bbox)
+  }
   if (debug && !is.null(wk_wareas)) plot(wk_wareas, col = "lightblue", add = TRUE)
 
   ## walk up sepa river
@@ -74,6 +82,7 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
   # start new plot
   if (debug) {
     plot(buff_sepa, border = grey(0.7), main = paste0("buffers using strahler: ", strahler))
+    scalebar(up_distance, divs = 4, type = "bar")
     points(p_snap, col = "red", pch = 16, cex = 0.5)
     points(p_upstr, col = "orange", pch = 16, cex = 0.5)
     lines(seg3, col = grey(0.7))
@@ -302,4 +311,42 @@ walkUpstream <- function(p_snap, wk_rivs, up_distance = 100, useRiverOrder = TRU
   list(seg  = seg3, p_upstr = p_upstr)
 }
 
+
+
+
+# group buffers into spatial dataframes
+#' @export
+groupBufferList <- function(buffer_list, sites) {
+
+  get_spolydf <- function(what, buffer_list, sites) {
+    outlist <- lapply(buffer_list, "[[", what)
+    notnull <- which(!sapply(outlist, is.null))
+    SpatialPolygonsDataFrame(do.call(rbind, outlist[notnull]),
+                             sites@data[notnull,,drop=FALSE])
+  }
+
+  get_sldf <- function(what, buffer_list, sites) {
+    outlist <- lapply(buffer_list, "[[", what)
+    SpatialLinesDataFrame(do.call(rbind, outlist),
+                          sites@data)
+  }
+
+  get_sptsdf <- function(what, buffer_list, sites) {
+    outlist <- lapply(buffer_list, "[[", what)
+    SpatialPointsDataFrame(do.call(rbind, outlist),
+                           sites@data)
+  }
+
+  # DO IT!
+
+  buffer <- get_spolydf("buffer", buffer_list, sites)
+  buffer_nowater <- get_spolydf("buffer_nowater", buffer_list, sites)
+  cut_area <- get_spolydf("cut_area", buffer_list, sites)
+
+  cut_lines <- get_sldf("cut_lines", buffer_list, sites)
+  riv_seg <- get_sldf("riv_seg", buffer_list, sites)
+
+  list(buffer = buffer, buffer_nowater = buffer_nowater, cut_area = cut_area,
+       cut_lines = cut_lines, riv_seg = riv_seg)
+}
 

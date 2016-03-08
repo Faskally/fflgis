@@ -6,7 +6,7 @@
 
 #' @export
 findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
-                       search_width = NULL, debug = FALSE,
+                       search_width = NULL, rivs_buffer = 100, debug = FALSE,
                        rivs, g, wareas, wlines)
 {
   # setup
@@ -14,7 +14,7 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
 
   # this is the main algorithm for finding buffers
   message("finding xy shift... ")
-  xyshift <- findShift(p, search_buffer = search_buffer, rivs_buffer = 100, debug = debug,
+  xyshift <- findShift(p, search_buffer = search_buffer, rivs_buffer = rivs_buffer, debug = debug,
                        rivs = rivs, g = g, wareas = wareas, wlines = wlines)
 
   # subset rivs and shift
@@ -50,9 +50,9 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
   if (debug && !is.null(wk_wlines)) lines(wk_wlines, col = "blue")
 
   # use buffer to crop water areas
-  wk_wareas <- wlines[as.vector(rgeos::gIntersects(wareas, bbox, byid = TRUE)),]
+  wk_wareas <- wareas[as.vector(rgeos::gIntersects(wareas, bbox, byid = TRUE)),]
   wk_wareas <- gIntersection(wk_wareas, bbox)
-  if (debug && !is.null(wk_wareas)) plot(wk_wareas, col = "blue", add = TRUE)
+  if (debug && !is.null(wk_wareas)) plot(wk_wareas, col = "lightblue", add = TRUE)
 
   ## walk up sepa river
   out <- walkUpstream(p_snap, wk_rivs, up_distance)
@@ -64,7 +64,7 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
   }
   # was p_snap a source?
   if (SpatialLinesLengths(seg3) == 0) {
-    stop("The sample point snapped exactly to a source...")
+    warning("The sample point snapped exactly to a source...")
   }
 
   # cut water polygon boundary here
@@ -144,7 +144,7 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
     out$riv_seg <- gLineMerge(out$riv_seg)
     out$riv_seg@lines[[1]]@ID <- rownames(p@data)
 
-    if (!is.null(out$cut_wlines)) {
+    if (!is.null(out$cut_lines)) {
       mcut_lines <- try(gLineMerge(out$cut_lines), silent = TRUE)
       if(inherits(mcut_lines, "try-error")) {
         # weird error - not sure why this is happening...

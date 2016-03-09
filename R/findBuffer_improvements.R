@@ -132,7 +132,8 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
   out <- list(buffer = buff_riv, buffer_nowater = buff_land,
               p_upstr = p_upstr, riv_seg = seg3,
               cut_area = cut_wareas, cut_lines = cut_wlines,
-              buffer_sepa = buff_sepa)
+              buffer_sepa = buff_sepa,
+              site = p)
 
   # add row IDs
   if ("SpatialPointsDataFrame" %in% is(p)) {
@@ -346,7 +347,10 @@ groupBufferList <- function(buffer_list, sites) {
   cut_lines <- get_sldf("cut_lines", buffer_list, sites)
   riv_seg <- get_sldf("riv_seg", buffer_list, sites)
 
+  sites <- get_sptsdf("site", buffer_list, sites)
+
   list(buffer = buffer, buffer_nowater = buffer_nowater, cut_area = cut_area,
-       cut_lines = cut_lines, riv_seg = riv_seg)
+       cut_lines = cut_lines, riv_seg = riv_seg,
+       sites = sites)
 }
 

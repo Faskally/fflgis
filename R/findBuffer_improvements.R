@@ -132,7 +132,7 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
 
   # substract off river areas
   buff_land <- if (is.null(wk_wareas)) buff_riv else rgeos::gDifference(buff_riv, wk_wareas)
-  if (debug) plot(buff_land, col = col_alpha("lightgreen", 0.2), add = TRUE)
+  if (debug & !is.null(buff_land)) plot(buff_land, col = col_alpha("lightgreen", 0.2), add = TRUE)
 
   # prepare outputs
   out <- list(buffer = buff_riv, buffer_nowater = buff_land,
@@ -146,9 +146,11 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
     out$buffer <- gUnaryUnion(out$buffer)
     out$buffer@polygons[[1]]@ID <- rownames(p@data)
 
-    out$buffer_nowater <- gUnaryUnion(out$buffer_nowater)
-    out$buffer_nowater@polygons[[1]]@ID <- rownames(p@data)
-
+    if (!is.null(buff_land)) {
+      out$buffer_nowater <- gUnaryUnion(out$buffer_nowater)
+      out$buffer_nowater@polygons[[1]]@ID <- rownames(p@data)
+    }
+    
     if (!is.null(cut_wareas)) {
       out$cut_area <- gUnaryUnion(out$cut_area)
       out$cut_area@polygons[[1]]@ID <- rownames(p@data)

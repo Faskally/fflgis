@@ -325,7 +325,7 @@ walkUpstream <- function(p_snap, wk_rivs, up_distance = 100, useRiverOrder = TRU
 
 # group buffers into spatial dataframes
 #' @export
-groupBufferList <- function(buffer_list, sites) {
+groupBufferList <- function(buffer_list) {
 
   get_spolydf <- function(what, buffer_list, sites) {
     outlist <- lapply(buffer_list, "[[", what)
@@ -347,6 +347,7 @@ groupBufferList <- function(buffer_list, sites) {
   }
 
   # DO IT!
+  sites <- do.call(rbind, lapply(buffer_list, "[[", "site"))
 
   buffer <- get_spolydf("buffer", buffer_list, sites)
   buffer_nowater <- get_spolydf("buffer_nowater", buffer_list, sites)
@@ -354,8 +355,6 @@ groupBufferList <- function(buffer_list, sites) {
 
   cut_lines <- get_sldf("cut_lines", buffer_list, sites)
   riv_seg <- get_sldf("riv_seg", buffer_list, sites)
-
-  sites <- get_sptsdf("site", buffer_list, sites)
 
   list(buffer = buffer, buffer_nowater = buffer_nowater, cut_area = cut_area,
        cut_lines = cut_lines, riv_seg = riv_seg,

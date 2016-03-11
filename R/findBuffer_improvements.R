@@ -91,7 +91,7 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
   # cut out water polygons MM data
   if (!is.null(wk_wareas)) {
     cut_wareas <- rgeos::gIntersection(buff_sepa, wk_wareas, byid=TRUE, drop_lower_td=TRUE)
-    if (debug) plot(cut_wareas, col = "lightblue", add = TRUE)
+    if (debug & !is.null(cut_wareas)) plot(cut_wareas, col = "lightblue", add = TRUE)
   } else {
     cut_wareas <- NULL
   }
@@ -99,19 +99,20 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
   # cut out water lines MM data
   if (!is.null(wk_wlines)) {
     cut_wlines <- rgeos::gIntersection(buff_sepa, wk_wlines, byid=TRUE, drop_lower_td=TRUE)
-    if (debug) lines(cut_wlines, col = "blue")
+    if (debug & !is.null(cut_wlines)) lines(cut_wlines, col = "blue")
   } else {
     cut_wlines <- NULL
   }
 
   if (is.null(cut_wareas) & is.null(cut_wlines)) {
     # there are no MM_water bodies near by... this needs to be flagged somehow...
-    stop("no MM data for this SEPA river.")
+    warning("no MM data for this SEPA river.")
+    buff_riv <- rgeos::gBuffer(seg3, width = width, byid = FALSE)
   }
 
   # now add a buffer to the river segment
   buff_riva <- if (is.null(cut_wareas)) NULL else rgeos::gBuffer(cut_wareas, width = width, byid = FALSE)
-  buff_rivl <- rgeos::gBuffer(cut_wlines, width = width, byid = FALSE)
+  buff_rivl <- if (is.null(cut_wlines)) NULL else rgeos::gBuffer(cut_wlines, width = width, byid = FALSE)
   # join the buffers incase there is a slight discrepancy
   buff_riv <- if (is.null(buff_riva)) buff_rivl else  gUnion(buff_riva, buff_rivl)
   if (debug) plot(buff_riv, col = col_alpha("orange", 0.2), add = TRUE)

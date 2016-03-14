@@ -14,7 +14,8 @@ Depends:
     rgeos,
     raster,
     maptools,
-    dismo
+    dismo,
+    rgdal
 Suggests:
     knitr (>= 1.8)
 License: MIT + file LICENSE

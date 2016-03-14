@@ -11,6 +11,7 @@
 #' @importFrom sp SpatialLinesDataFrame
 #' @importFrom sp SpatialLinesLengths
 #' @importFrom sp SpatialPolygons
+#' @importFrom sp SpatialPolygonsDataFrame
 #' @importFrom sp Line
 #' @importFrom sp LineLength
 #' @importFrom sp Lines
@@ -29,12 +30,18 @@
 #' @importFrom raster extract
 #' @importFrom raster crs
 #' @importFrom raster 'crs<-'
+#' @importFrom raster scalebar
 #' @importFrom rgeos gBuffer
 #' @importFrom rgeos gDistance
 #' @importFrom rgeos gLineMerge
 #' @importFrom rgeos gIntersection
 #' @importFrom rgeos gUnion
 #' @importFrom rgeos gUnaryUnion
+#' @importFrom rgeos gIntersects
+#' @importFrom rgeos gDifference
 #' @importFrom dismo gmap
+#' @importFrom maptools snapPointsToLines
+#' @importFrom rgdal readOGR
+#' @importFrom rgdal writeOGR
 #'
 NULL

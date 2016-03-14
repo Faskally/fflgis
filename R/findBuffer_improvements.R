@@ -28,7 +28,7 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
 
   # set sepa line buffer width based on river order
   # snap point to shifted river segment
-  p_snap <- maptools::snapPointsToLines(p, wk_rivs) # no limit
+  p_snap <- snapPointsToLines(p, wk_rivs) # no limit
   if (debug) points(p_snap, pch = 16, cex = 0.5, col = "red")
 
   # find search width first by strahler order:
@@ -45,7 +45,7 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
 
   # crop main datasets to size
   # use buffer to crop water lines
-  wk_wlines <- wlines[as.vector(rgeos::gIntersects(wlines, bbox, byid = TRUE)),]
+  wk_wlines <- wlines[as.vector(gIntersects(wlines, bbox, byid = TRUE)),]
   if (length(wk_wlines) == 0) {
     wk_wlines <- NULL
   } else {
@@ -54,7 +54,7 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
   if (debug && !is.null(wk_wlines)) lines(wk_wlines, col = "blue")
 
   # use buffer to crop water areas
-  wk_wareas <- wareas[as.vector(rgeos::gIntersects(wareas, bbox, byid = TRUE)),]
+  wk_wareas <- wareas[as.vector(gIntersects(wareas, bbox, byid = TRUE)),]
   if (length(wk_wareas) == 0) {
     wk_wareas <- NULL
   } else {
@@ -77,7 +77,7 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
 
   # cut water polygon boundary here
   # tricky - one solution is
-  buff_sepa <- rgeos::gBuffer(seg3, width = search_width, byid = FALSE, capStyle = "FLAT")
+  buff_sepa <- gBuffer(seg3, width = search_width, byid = FALSE, capStyle = "FLAT")
   if (debug) plot(buff_sepa, add = TRUE, border = grey(0.7))
   # start new plot
   if (debug) {
@@ -90,7 +90,7 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
 
   # cut out water polygons MM data
   if (!is.null(wk_wareas)) {
-    cut_wareas <- rgeos::gIntersection(buff_sepa, wk_wareas, byid=TRUE, drop_lower_td=TRUE)
+    cut_wareas <- gIntersection(buff_sepa, wk_wareas, byid=TRUE, drop_lower_td=TRUE)
     if (debug & !is.null(cut_wareas)) plot(cut_wareas, col = "lightblue", add = TRUE)
   } else {
     cut_wareas <- NULL
@@ -98,7 +98,7 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
 
   # cut out water lines MM data
   if (!is.null(wk_wlines)) {
-    cut_wlines <- rgeos::gIntersection(buff_sepa, wk_wlines, byid=TRUE, drop_lower_td=TRUE)
+    cut_wlines <- gIntersection(buff_sepa, wk_wlines, byid=TRUE, drop_lower_td=TRUE)
     if (debug & !is.null(cut_wlines)) lines(cut_wlines, col = "blue")
   } else {
     cut_wlines <- NULL
@@ -107,11 +107,11 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
   # now add a buffer to the river segment
   if (is.null(cut_wareas) & is.null(cut_wlines)) {
     # there are no MM_water bodies near by... this needs to be flagged somehow...
-    buff_riv <- rgeos::gBuffer(seg3, width = width, byid = FALSE)
+    buff_riv <- gBuffer(seg3, width = width, byid = FALSE)
   } else {
     buff_riva <- if (is.null(cut_wareas)) NULL else rgeos::gBuffer(cut_wareas, width = width, byid = FALSE)
     buff_rivl <- if (is.null(cut_wlines)) NULL else rgeos::gBuffer(cut_wlines, width = width, byid = FALSE)
-    
+
     if (is.null(cut_wareas)) {
       buff_riv <- buff_rivl
     } else if (is.null(cut_wlines)) {
@@ -120,6 +120,7 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
       buff_riv <- gUnion(buff_riva, buff_rivl)
     }
   }
+
   if (debug) plot(buff_riv, col = col_alpha("orange", 0.2), add = TRUE)
 
   # --------------------------------------------------------
@@ -131,8 +132,9 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
   # --------------------------------------------------------
 
   # substract off river areas
-  buff_land <- if (is.null(wk_wareas)) buff_riv else rgeos::gDifference(buff_riv, wk_wareas)
+  buff_land <- if (is.null(wk_wareas)) buff_riv else gDifference(buff_riv, wk_wareas)
   if (debug & !is.null(buff_land)) plot(buff_land, col = col_alpha("lightgreen", 0.2), add = TRUE)
+
 
   # prepare outputs
   out <- list(buffer = buff_riv, buffer_nowater = buff_land,
@@ -150,7 +152,7 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
       out$buffer_nowater <- gUnaryUnion(out$buffer_nowater)
       out$buffer_nowater@polygons[[1]]@ID <- rownames(p@data)
     }
-    
+
     if (!is.null(cut_wareas)) {
       out$cut_area <- gUnaryUnion(out$cut_area)
       out$cut_area@polygons[[1]]@ID <- rownames(p@data)

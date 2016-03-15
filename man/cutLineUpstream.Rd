@@ -28,6 +28,7 @@ plot(line)
 points(cc)
 points(pt, col = "green")
 lines(up_line, col = "red")
+y <- function(x) 0.1*x^2
 
 cc <- cbind(-10:10, y(-10:10))
 line <- SpatialLines(list(Lines(list(Line(cc)), ID = "A")), bng)

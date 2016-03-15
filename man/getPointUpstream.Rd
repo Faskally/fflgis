@@ -7,35 +7,14 @@
 getPointUpstream(sldf, distance = 50)
 }
 \arguments{
-\item{line}{a spatial line.}
+\item{sldf}{a spatial line.}
 
-\item{dist}{the distance to move upstream.}
+\item{distance}{the distance to move upstream.}
 }
 \value{
-A spatial lines object.
+A spatial points object.
 }
 \description{
 Find a point a given distance up stream on a river segment
-}
-\examples{
-bng <- CRS("+init=epsg:27700")
-cc <- cbind(c(0,0), c(0,1))
-line <- SpatialLines(list(Lines(list(Line(cc)), ID = "A")), bng)
-up_pt <- getPointUpstream(line, 0.5)
-
-plot(line)
-points(cc)
-points(up_pt, col = "green")
-
-cc <- cbind(-10:10, y(-10:10))
-line <- SpatialLines(list(Lines(list(Line(cc)), ID = "A")), bng)
-pt <- SpatialPoints(cbind(-8.020474, 6.493534), bng)
-pt <- snapPointsToLines(pt, line)
-up_line <- cutLineUpstream(line, pt)
-
-plot(up_line, col = "red", lwd = 2, xlim = c(-10, -2), ylim = c(5, 10))
-lines(line)
-points(cc)
-points(pt, col = "green")
 }
 

@@ -16,6 +16,7 @@
 #' points(cc)
 #' points(pt, col = "green")
 #' lines(down_line, col = "red")
+#' y <- function(x) 0.1*x^2
 #'
 #' cc <- cbind(-10:10, y(-10:10))
 #' line <- SpatialLines(list(Lines(list(Line(cc)), ID = "A")), bng)
@@ -39,9 +40,12 @@ cutLineDownstream <- function(line, pt) {
     warning("line is completely cut, i.e. pt is same as first point in line")
   }
   # find which interval the snapped point is in
-  int <- sort(order(dists)[1:2])
+  # split into many line segments
+  slcc <- SpatialLines(lapply(1:(nrow(cc)-1), function(i) Lines(list(Line(cc[i + 0:1,])), ID = i)), crs(line))
+  d <- rgeos::gDistance(pt, slcc, byid = TRUE)
+  int <- which.min(d)
   # new coords for line (cut downstream points out)
-  cc_new <- rbind(cc[1:int[1],],coordinates(pt))
+  cc_new <- rbind(cc[1:int,],coordinates(pt))
   SpatialLines(list(Lines(list(Line(cc_new)), ID = "A")), crs(line))
 }
 
@@ -62,6 +66,7 @@ cutLineDownstream <- function(line, pt) {
 #' points(cc)
 #' points(pt, col = "green")
 #' lines(up_line, col = "red")
+#' y <- function(x) 0.1*x^2
 #'
 #' cc <- cbind(-10:10, y(-10:10))
 #' line <- SpatialLines(list(Lines(list(Line(cc)), ID = "A")), bng)
@@ -84,40 +89,26 @@ cutLineUpstream <- function(line, pt) {
     warning("line is completely cut, i.e. pt is same as last point in line")
   }
   # find which interval the snapped point is in
-  int <- sort(order(dists)[1:2])
+  # split into many line segments
+  slcc <- SpatialLines(lapply(1:(nrow(cc)-1), function(i) Lines(list(Line(cc[i + 0:1,])), ID = i)), crs(line))
+  d <- rgeos::gDistance(pt, slcc, byid = TRUE)
+  int <- which.min(d)
   # new coords for line (cut upstream points out)
-  cc_new <- rbind(coordinates(pt), cc[int[2]:nrow(cc),])
+  cc_new <- rbind(coordinates(pt), cc[(int+1):nrow(cc),])
   SpatialLines(list(Lines(list(Line(cc_new)), ID = "A")), crs(line))
 }
 
 
 
 
+
+
+
 #' Find a point a given distance up stream on a river segment
 #'
-#' @param line a spatial line.
-#' @param dist the distance to move upstream.
-#' @return A spatial lines object.
-#' @examples
-#' bng <- CRS("+init=epsg:27700")
-#' cc <- cbind(c(0,0), c(0,1))
-#' line <- SpatialLines(list(Lines(list(Line(cc)), ID = "A")), bng)
-#' up_pt <- getPointUpstream(line, 0.5)
-#'
-#' plot(line)
-#' points(cc)
-#' points(up_pt, col = "green")
-#'
-#' cc <- cbind(-10:10, y(-10:10))
-#' line <- SpatialLines(list(Lines(list(Line(cc)), ID = "A")), bng)
-#' pt <- SpatialPoints(cbind(-8.020474, 6.493534), bng)
-#' pt <- snapPointsToLines(pt, line)
-#' up_line <- cutLineUpstream(line, pt)
-#'
-#' plot(up_line, col = "red", lwd = 2, xlim = c(-10, -2), ylim = c(5, 10))
-#' lines(line)
-#' points(cc)
-#' points(pt, col = "green")
+#' @param sldf a spatial line.
+#' @param distance the distance to move upstream.
+#' @return A spatial points object.
 #' @export
 getPointUpstream <- function (sldf, distance = 50)
 {
@@ -163,6 +154,92 @@ getPoint <- function(coords, distance)
   mid <- start + (end - start) * (dist_remaining/dist[start_index])
   return(mid)
 }
+
+
+
+
+
+#' @export
+walkUpstream <- function(p_snap, wk_rivs, up_distance = 100, useRiverOrder = TRUE)
+{
+  # get segment that snapped point is on
+  # make graph of river
+  wk_g <- makeDRNGraph(wk_rivs)
+  # add in vertex names to wk_rivs
+  wk_rivs@data[c("start", "stop")] <- getUpDownNodes(wk_rivs)
+
+  #
+  ids <- as.character(unlist(p_snap@data[,names(p_snap) == "nearest_line_id"]))
+  if (length(ids) > 1) {
+    ids <- names(which.min(sapply(ids, function(x) gDistance(p_snap, wk_rivs[x,]))))
+  }
+  seg <- wk_rivs[ids, ]
+  # cut the segment to start at the snapped point
+  seg2 <- cutLineDownstream(seg, p_snap)
+  # how long is the line
+  seg_len <- SpatialLinesLengths(seg2) # 17.4, so we will encouter a split
+
+  if (seg_len < up_distance) {
+    # what are the next segments?
+    upVs <- names(V(wk_g)[nei(as.character(seg@data$start), mode = "in")])
+    # how many segments are there?
+    if (length(upVs) == 0)
+    {
+      # we have hit a source - return a buffer along the available segement?
+      warning("A source was encountered, and only a buffer around the available line was used.")
+      p_upstr <- getPointUpstream(seg2, seg_len+0.01)
+      seg3 <- seg2
+
+    } else if (length(upVs) == 1)
+    {
+      ids <- get.edge.ids(wk_g, c(upVs[1], as.character(seg@data$start)))
+      upseg <- wk_rivs[ids,]
+      # what if we encounter another junction?
+      p_upstr <- getPointUpstream(upseg, up_distance - SpatialLinesLengths(seg2))
+      seg3 <- cutLineUpstream(upseg, p_upstr)
+      # join lines
+      seg3 <- gUnion(seg2, seg3)
+
+    } else if (length(upVs) > 1)
+    {
+      ids <- get.edge.ids(wk_g, c(upVs[1], as.character(seg@data$start), upVs[2], as.character(seg@data$start)))
+      upsegs <- wk_rivs[ids,]
+      # is one a higher order? (only if useRiverOrder is TRUE)
+      if (!useRiverOrder | upsegs$order[1] == upsegs$order[2]) {
+        # walk up first
+        p_upstr1 <- getPointUpstream(upsegs[1,], up_distance - SpatialLinesLengths(seg2))
+        # cut line
+        seg3.1 <- cutLineUpstream(upsegs[1,], p_upstr1)
+        # walk up 2nd
+        p_upstr2 <- getPointUpstream(upsegs[2,], up_distance - SpatialLinesLengths(seg2))
+        # cut line
+        seg3.2 <- cutLineUpstream(upsegs[2,], p_upstr2)
+        # join lines
+        # ## NOTE: this has some strange behaviour ... it strips of detail...
+        seg3 <- gUnion(gUnion(seg2, seg3.1), seg3.2)
+        # join points
+        p_upstr <- gUnion(p_upstr1, p_upstr2)
+      } else {
+        # walk up mainstem
+        upseg <- upsegs[which.max(upsegs$order),]
+        # what if we encounter another junction?
+        p_upstr <- getPointUpstream(upseg, up_distance - SpatialLinesLengths(seg2))
+        seg3 <- cutLineUpstream(upseg, p_upstr)
+        # join lines
+        seg3 <- gUnion(seg2, seg3)
+      }
+    }
+  } else {
+    # No need to cross junctions
+    # get a point upstream
+    p_upstr <- getPointUpstream(seg2, up_distance)
+    # cut line upstream at new point
+    seg3 <- cutLineUpstream(seg2, p_upstr)
+  }
+  list(seg  = seg3, p_upstr = p_upstr)
+}
+
+
 
 
 

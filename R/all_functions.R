@@ -1,65 +1,123 @@
 
 
+#' Cut off the downdtream segment of a river segment at a point
+#'
+#' @param line a spatial line.
+#' @param pt a spatial point, previously snapped to \code{line}.
+#' @return A spatial lines object.
+#' @examples
+#' bng <- CRS("+init=epsg:27700")
+#' cc <- cbind(c(0,0), c(0,1))
+#' line <- SpatialLines(list(Lines(list(Line(cc)), ID = "A")), bng)
+#' pt <- SpatialPoints(cbind(0, .5), bng)
+#' down_line <- cutLineDownstream(line, pt)
+#'
+#' plot(line)
+#' points(cc)
+#' points(pt, col = "green")
+#' lines(down_line, col = "red")
+#'
+#' cc <- cbind(-10:10, y(-10:10))
+#' line <- SpatialLines(list(Lines(list(Line(cc)), ID = "A")), bng)
+#' pt <- SpatialPoints(cbind(-8.020474, 6.493534), bng)
+#' pt <- snapPointsToLines(pt, line)
+#' down_line <- cutLineDownstream(line, pt)
+#'
+#' plot(down_line, col = "red", lwd = 2, xlim = c(-10, -2), ylim = c(5, 10))
+#' lines(line)
+#' points(cc)
+#' points(pt, col = "green")
 #' @export
 cutLineDownstream <- function(line, pt) {
-  x <- line@lines[[1]]@Lines[[1]]
-  #get digitised points along river
-  cc = coordinates(x)
-  # find the distance between the snapped point and the digitised points
+  # get digitised points along river
+  cc <- coordinates(line)[[1]][[1]]
+  # find the distances between the snapped point
+  # and the digitised points
   dists <- sqrt(colSums((t(cc) - c(coordinates(pt)))^2))
+  # check if the point lies exactly on the first point
+  if (dists[1] == 0) {
+    warning("line is completely cut, i.e. pt is same as first point in line")
+  }
   # find which interval the snapped point is in
-  int <- min(order(dists)[1:2])
+  int <- sort(order(dists)[1:2])
   # new coords for line (cut downstream points out)
-  cc_new <- rbind(cc[1:(int-1),],coordinates(pt))
-  SpatialLines(list(Lines(list(Line(cc_new)), ID = "A")), CRS(proj4string(line)))
+  cc_new <- rbind(cc[1:int[1],],coordinates(pt))
+  SpatialLines(list(Lines(list(Line(cc_new)), ID = "A")), crs(line))
 }
 
 
+#' Cut off the upstream segment of a river segment at a point
+#'
+#' @param line a spatial line.
+#' @param pt a spatial point, previously snapped to \code{line}.
+#' @return A spatial lines object.
+#' @examples
+#' bng <- CRS("+init=epsg:27700")
+#' cc <- cbind(c(0,0), c(0,1))
+#' line <- SpatialLines(list(Lines(list(Line(cc)), ID = "A")), bng)
+#' pt <- SpatialPoints(cbind(0, .5), bng)
+#' up_line <- cutLineUpstream(line, pt)
+#'
+#' plot(line)
+#' points(cc)
+#' points(pt, col = "green")
+#' lines(up_line, col = "red")
+#'
+#' cc <- cbind(-10:10, y(-10:10))
+#' line <- SpatialLines(list(Lines(list(Line(cc)), ID = "A")), bng)
+#' pt <- SpatialPoints(cbind(-8.020474, 6.493534), bng)
+#' pt <- snapPointsToLines(pt, line)
+#' up_line <- cutLineUpstream(line, pt)
+#'
+#' plot(up_line, col = "red", lwd = 2, xlim = c(-10, -2), ylim = c(5, 10))
+#' lines(line)
+#' points(cc)
+#' points(pt, col = "green")
 #' @export
 cutLineUpstream <- function(line, pt) {
-  x <- line@lines[[1]]@Lines[[1]]
-  #get digitised points along river
-  cc = coordinates(x)
+  # get digitised points along river
+  cc <- coordinates(line)[[1]][[1]]
   # find the distance between the snapped point and the digitised points
   dists <- sqrt(colSums((t(cc) - c(coordinates(pt)))^2))
-  # find which interval the snapped point is in
-  int <- min(order(dists)[1:2])
-  # new coords for line (cut upstream points out)
-  cc_new <- rbind(coordinates(pt), cc[-(1:int),])
-  SpatialLines(list(Lines(list(Line(cc_new)), ID = "A")), CRS(proj4string(line)))
-}
-
-#' @export
-getPointUpstream <- function(line, dist) {
-  x <- line@lines[[1]]@Lines[[1]]
-  #get digitised points along river
-  cc = coordinates(x)
-  # get distances between digitised points
-  lengths <- LineLength(cc, longlat = FALSE, sum = FALSE)
-  # remove duplicate points on line
-  if (any(abs(lengths) < .Machine$double.eps)) {
-    wl <- which(abs(lengths) < .Machine$double.eps)
-    cc <- cc[-(wl), ]
-    lengths <- lengths[-(wl)]
+  # check if the point lies exactly on the first point
+  if (dists[length(dists)] == 0) {
+    warning("line is completely cut, i.e. pt is same as last point in line")
   }
-  # cumulative distance
-  csl = c(0, cumsum(lengths))
-  # max distance
-  maxl = csl[length(csl)]
-  # choose a distance upstream
-  pts <- maxl - dist
-  # find which subsegment pts is in
-  int = findInterval(pts, csl, all.inside = TRUE)
-  # where is pts on the subsegment
-  where = (pts - csl[int])/diff(csl)[int]
-  # work out coords for the new point
-  xy = cc[int, , drop = FALSE] +
-    where * (cc[int + 1, , drop = FALSE] - cc[int, , drop = FALSE])
-  SpatialPoints(xy, CRS(proj4string(line)))
+  # find which interval the snapped point is in
+  int <- sort(order(dists)[1:2])
+  # new coords for line (cut upstream points out)
+  cc_new <- rbind(coordinates(pt), cc[int[2]:nrow(cc),])
+  SpatialLines(list(Lines(list(Line(cc_new)), ID = "A")), crs(line))
 }
 
-# the next two functions are for aplpying to a spatial lines dataframe
-# and getting a points a distance upstream
+
+
+
+#' Find a point a given distance up stream on a river segment
+#'
+#' @param line a spatial line.
+#' @param dist the distance to move upstream.
+#' @return A spatial lines object.
+#' @examples
+#' bng <- CRS("+init=epsg:27700")
+#' cc <- cbind(c(0,0), c(0,1))
+#' line <- SpatialLines(list(Lines(list(Line(cc)), ID = "A")), bng)
+#' up_pt <- getPointUpstream(line, 0.5)
+#'
+#' plot(line)
+#' points(cc)
+#' points(up_pt, col = "green")
+#'
+#' cc <- cbind(-10:10, y(-10:10))
+#' line <- SpatialLines(list(Lines(list(Line(cc)), ID = "A")), bng)
+#' pt <- SpatialPoints(cbind(-8.020474, 6.493534), bng)
+#' pt <- snapPointsToLines(pt, line)
+#' up_line <- cutLineUpstream(line, pt)
+#'
+#' plot(up_line, col = "red", lwd = 2, xlim = c(-10, -2), ylim = c(5, 10))
+#' lines(line)
+#' points(cc)
+#' points(pt, col = "green")
 #' @export
 getPointUpstream <- function (sldf, distance = 50)
 {
@@ -83,9 +141,9 @@ getPointUpstream <- function (sldf, distance = 50)
     df <- as.data.frame(cbind(df0, Ind))
   }
   else df <- data.frame(Ind = Ind)
-  spdf <- SpatialPointsDataFrame(midpoints, data = df, proj4string = CRS(proj4string(sldf)))
-  return(spdf)
+  SpatialPointsDataFrame(midpoints, data = df, proj4string = crs(sldf))
 }
+
 
 #' @export
 getPoint <- function(coords, distance)
@@ -154,6 +212,7 @@ makeDRNGraph <- function(rivs) {
   E(g)$weight <- sapply(edges, LineLength, longlat = FALSE, sum = TRUE)
   g
 }
+
 
 #' @export
 getUpDownNodes <- function(rivs) {
@@ -528,7 +587,7 @@ addOrder2DRN <- function(rivs, graph) {
 
 
 
-addSite2DRN <- function(site, rivs, site_name) {
+addSite2DRN <- function(site, rivs, site_name, rname) {
   # find segment to split
   snap_site <- snapPointsToLines(site, rivs)
 
@@ -540,14 +599,18 @@ addSite2DRN <- function(site, rivs, site_name) {
   }
 
   # strip off river lines that we will keep
-  keep <- rownames(rivs@data) != paste(snap_site $ nearest_line_id)
+  # sometime there is more than one nearerst line id
+  ids <- as.character(unlist(snap_site@data[,names(snap_site) == "nearest_line_id"]))
+  if (length(ids) > 1) {
+    ids <- names(which.min(sapply(ids, function(x) gDistance(snap_site, rivs[x,]))))
+  }
+  keep <- rownames(rivs@data) != ids
   rivs_keep <- rivs[keep,]
   # rename IDS
   spChFIDs(rivs_keep) <- 1:length(rivs_keep)
 
   # split segement:
-  rid <- paste(snap_site$nearest_line_id)
-  out <- c(cutLineDownstream(rivs[rid,], snap_site), cutLineUpstream(rivs[rid,], snap_site))
+  out <- c(cutLineDownstream(rivs[ids,], snap_site), cutLineUpstream(rivs[ids,], snap_site))
   # give unique ids and merge
   out <- lapply(1:2, function(i) {out[[i]]@lines[[1]]@ID <- paste(i); out[[i]]})
   out <- do.call(rbind, out)
@@ -564,7 +627,7 @@ addSite2DRN <- function(site, rivs, site_name) {
     newdf $ start <- newdf $ up_node
     newdf $ end <- newdf $ down_node
   }
-  newdf$site.name[2] <- site_name
+  newdf[[rname]][2] <- site_name
 
   row.names(newdf) <- 1:2 + length(rivs_keep)
 
@@ -579,12 +642,20 @@ addSite2DRN <- function(site, rivs, site_name) {
 #' @export
 addSites2DRN <- function(sites, rivs, site_names) {
   message("Make sure that sites locations are unique if possible. \nOtherwise site names could be overwritten.\n")
-  # if rivs does not have site columns in dataframe, then add them as NAs
-  rivs$site.name = ""
+  # get column name to put site names in
+  if (is.null(names(site_names))) {
+    rname <- "site.name"
+  } else {
+    rname <- names(site_names)
+  }
+  # if rivs does not have site columns in dataframe, then add them as ""
+  if (is.null(rivs[[rname]])) {
+    rivs[[rname]] <- ""
+  }
   # get site name from sites data
   site_names <- sites[[site_names]]
   for (i in 1:length(sites)) {
-    rivs <- addSite2DRN(sites[i,], rivs, site_names[i])
+    rivs <- addSite2DRN(sites[i,], rivs, site_names[i], rname)
   }
   rivs
 }

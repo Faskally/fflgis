@@ -1,31 +1,96 @@
+
+
+#' Cut off the downdtream segment of a river segment at a point
+#'
+#' @param line a spatial line.
+#' @param pt a spatial point, previously snapped to \code{line}.
+#' @return A spatial lines object.
+#' @examples
+#' bng <- CRS("+init=epsg:27700")
+#' cc <- cbind(c(0,0), c(0,1))
+#' line <- SpatialLines(list(Lines(list(Line(cc)), ID = "A")), bng)
+#' pt <- SpatialPoints(cbind(0, .5), bng)
+#' down_line <- cutLineDownstream(line, pt)
+#'
+#' plot(line)
+#' points(cc)
+#' points(pt, col = "green")
+#' lines(down_line, col = "red")
+#'
+#' cc <- cbind(-10:10, y(-10:10))
+#' line <- SpatialLines(list(Lines(list(Line(cc)), ID = "A")), bng)
+#' pt <- SpatialPoints(cbind(-8.020474, 6.493534), bng)
+#' pt <- snapPointsToLines(pt, line)
+#' down_line <- cutLineDownstream(line, pt)
+#'
+#' plot(down_line, col = "red", lwd = 2, xlim = c(-10, -2), ylim = c(5, 10))
+#' lines(line)
+#' points(cc)
+#' points(pt, col = "green")
 #' @export
 cutLineDownstream <- function(line, pt) {
-  x <- line@lines[[1]]@Lines[[1]]
-  #get digitised points along river
-  cc = coordinates(x)
-  # find the distance between the snapped point and the digitised points
+  # get digitised points along river
+  cc <- coordinates(line)[[1]][[1]]
+  # find the distances between the snapped point
+  # and the digitised points
   dists <- sqrt(colSums((t(cc) - c(coordinates(pt)))^2))
+  # check if the point lies exactly on the first point
+  if (dists[1] == 0) {
+    warning("line is completely cut, i.e. pt is same as first point in line")
+  }
   # find which interval the snapped point is in
-  int <- min(order(dists)[1:2])
+  int <- sort(order(dists)[1:2])
   # new coords for line (cut downstream points out)
-  cc_new <- rbind(cc[1:(int-1),],coordinates(pt))
-  SpatialLines(list(Lines(list(Line(cc_new)), ID = "A")), CRS(proj4string(line)))
+  cc_new <- rbind(cc[1:int[1],],coordinates(pt))
+  SpatialLines(list(Lines(list(Line(cc_new)), ID = "A")), crs(line))
 }
 
 
+#' Cut off the upstream segment of a river segment at a point
+#'
+#' @param line a spatial line.
+#' @param pt a spatial point, previously snapped to \code{line}.
+#' @return A spatial lines object.
+#' @examples
+#' bng <- CRS("+init=epsg:27700")
+#' cc <- cbind(c(0,0), c(0,1))
+#' line <- SpatialLines(list(Lines(list(Line(cc)), ID = "A")), bng)
+#' pt <- SpatialPoints(cbind(0, .5), bng)
+#' up_line <- cutLineUpstream(line, pt)
+#'
+#' plot(line)
+#' points(cc)
+#' points(pt, col = "green")
+#' lines(up_line, col = "red")
+#'
+#' cc <- cbind(-10:10, y(-10:10))
+#' line <- SpatialLines(list(Lines(list(Line(cc)), ID = "A")), bng)
+#' pt <- SpatialPoints(cbind(-8.020474, 6.493534), bng)
+#' pt <- snapPointsToLines(pt, line)
+#' up_line <- cutLineUpstream(line, pt)
+#'
+#' plot(up_line, col = "red", lwd = 2, xlim = c(-10, -2), ylim = c(5, 10))
+#' lines(line)
+#' points(cc)
+#' points(pt, col = "green")
 #' @export
 cutLineUpstream <- function(line, pt) {
-  x <- line@lines[[1]]@Lines[[1]]
-  #get digitised points along river
-  cc = coordinates(x)
+  # get digitised points along river
+  cc <- coordinates(line)[[1]][[1]]
   # find the distance between the snapped point and the digitised points
   dists <- sqrt(colSums((t(cc) - c(coordinates(pt)))^2))
+  # check if the point lies exactly on the first point
+  if (dists[length(dists)] == 0) {
+    warning("line is completely cut, i.e. pt is same as last point in line")
+  }
   # find which interval the snapped point is in
-  int <- min(order(dists)[1:2])
+  int <- sort(order(dists)[1:2])
   # new coords for line (cut upstream points out)
-  cc_new <- rbind(coordinates(pt), cc[-(1:int),])
-  SpatialLines(list(Lines(list(Line(cc_new)), ID = "A")), CRS(proj4string(line)))
+  cc_new <- rbind(coordinates(pt), cc[int[2]:nrow(cc),])
+  SpatialLines(list(Lines(list(Line(cc_new)), ID = "A")), crs(line))
 }
+
+
 
 
 #' Find a point a given distance up stream on a river segment

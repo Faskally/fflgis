@@ -230,8 +230,10 @@ getUpDownNodes <- function(rivs) {
 #' @export
 addUpDownNodes <- function(rivs) {
   upDownNodes <- getUpDownNodes(rivs)
-  rivs@data$up_node <- upDownNodes$up_node
-  rivs@data$down_node <- upDownNodes$down_node
+  rivs$start <- upDownNodes$up_node
+  rivs$end <- upDownNodes$down_node
+  rivs$up_node <- upDownNodes$up_node
+  rivs$down_node <- upDownNodes$down_node
   rivs
 }
 
@@ -578,8 +580,8 @@ addOrder2DRN <- function(rivs, graph) {
   rivs@data $ order <- E(graph)$order
   rivs@data $ width <- E(graph)$width
   rivs@data $ color <- E(graph)$color
-  rivs@data $ start <- ends(graph, E(graph))[,1]
-  rivs@data $ end <- ends(graph, E(graph))[,2]
+  #rivs@data $ start <- ends(graph, E(graph))[,1]
+  #rivs@data $ end <- ends(graph, E(graph))[,2]
   rivs <- addUpDownNodes(rivs)
   rivs
 }

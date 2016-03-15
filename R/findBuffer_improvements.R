@@ -345,8 +345,9 @@ groupBufferList <- function(buffer_list) {
 
   get_sptsdf <- function(what, buffer_list, sites) {
     outlist <- lapply(buffer_list, "[[", what)
-    SpatialPointsDataFrame(do.call(rbind, outlist),
-                           sites@data)
+    notnull <- which(!sapply(outlist, is.null))
+    SpatialPointsDataFrame(do.call(rbind, outlistoutlist[notnull]),
+                           sites@data[notnull,,drop=FALSE])
   }
 
   # DO IT!

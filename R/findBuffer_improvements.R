@@ -35,6 +35,7 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
     # snap to origional line and shift
     p_snap <- snapPointsToLines(p, wk_rivs_orig) # no limit
     p_snap <- shift(p_snap, xyshift[1], xyshift[2])
+    p_snap <- snapPointsToLines(p_snap, wk_rivs)
   }
   if (debug) points(p_snap, pch = 16, cex = 0.5, col = "red")
 

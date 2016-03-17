@@ -7,7 +7,8 @@
 #' @export
 findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
                        search_width = NULL, rivs_buffer = 100, debug = FALSE,
-                       rivs, g, wareas, wlines)
+                       rivs, g, wareas, wlines, 
+                       snap_to_shifted_sepaline = TRUE)
 {
   # setup
   if (is.null(search_width)) search_width <- c(7, 10, 15, 30, 50)
@@ -22,13 +23,19 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
   bbox <- gBuffer(p, width = max(search_buffer, up_distance*1.5))
   if (debug) plot(bbox, border = grey(0.7))
 
-  wk_rivs <- rivs[as.vector(rgeos::gIntersects(rivs, bbox, byid = TRUE)),]
-  wk_rivs <- shift(wk_rivs, xyshift[1], xyshift[2])
+  wk_rivs_orig <- rivs[as.vector(rgeos::gIntersects(rivs, bbox, byid = TRUE)),]
+  wk_rivs <- shift(wk_rivs_orig, xyshift[1], xyshift[2])
   if (debug) lines(wk_rivs)
 
-  # set sepa line buffer width based on river order
-  # snap point to shifted river segment
-  p_snap <- snapPointsToLines(p, wk_rivs) # no limit
+  # snap point to (possibly) shifted river segment
+  if (snap_to_shifted_sepaline) {
+    # snap to shifted line
+    p_snap <- snapPointsToLines(p, wk_rivs) # no limit
+  } else {
+    # snap to origional line and shift
+    p_snap <- snapPointsToLines(p, wk_rivs_orig) # no limit
+    p_snap <- shift(p_snap, xyshift[1], xyshift[2])
+  }
   if (debug) points(p_snap, pch = 16, cex = 0.5, col = "red")
 
   # find search width first by strahler order:

@@ -262,6 +262,7 @@ groupBufferList <- function(buffer_list) {
   get_spolydf <- function(what, buffer_list, sites) {
     outlist <- lapply(buffer_list, "[[", what)
     notnull <- which(!sapply(outlist, is.null))
+    if (length(notnull) == 0) return(NULL)
     SpatialPolygonsDataFrame(do.call(rbind, outlist[notnull]),
                              sites@data[notnull,,drop=FALSE])
   }
@@ -269,6 +270,7 @@ groupBufferList <- function(buffer_list) {
   get_sldf <- function(what, buffer_list, sites) {
     outlist <- lapply(buffer_list, "[[", what)
     notnull <- which(!sapply(outlist, is.null))
+    if (length(notnull) == 0) return(NULL)
     SpatialLinesDataFrame(do.call(rbind, outlist[notnull]),
                           sites@data[notnull,,drop=FALSE])
   }
@@ -276,6 +278,7 @@ groupBufferList <- function(buffer_list) {
   get_sptsdf <- function(what, buffer_list, sites) {
     outlist <- lapply(buffer_list, "[[", what)
     notnull <- which(!sapply(outlist, is.null))
+    if (length(notnull) == 0) return(NULL)
     SpatialPointsDataFrame(do.call(rbind, outlist[notnull]),
                            sites@data[notnull,,drop=FALSE])
   }

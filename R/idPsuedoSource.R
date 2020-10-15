@@ -1,4 +1,5 @@
 # idPsuedoSource function
+#' @export
 
 idPsuedoSource <- function(gr, gr_full) {
 
@@ -33,7 +34,6 @@ idPsuedoSource <- function(gr, gr_full) {
     # then one mouth, one source and all nodes are to be removed
 
     gr.names[deg.gr == 0]
-
   }
 
 
@@ -55,7 +55,6 @@ idPsuedoSource <- function(gr, gr_full) {
     # is the upID a source, if yes mark it to be removed
 
     sourceID <- c(sourceID, intersect(which(deg.gr == 0), upID))
-
   }
 
 
@@ -68,15 +67,19 @@ idPsuedoSource <- function(gr, gr_full) {
 
     # what are the upstream nodes
 
-    #UPDATE R_igraph_neighborhood TO C_R_igraph_neighborhood..... 12/02/2020
+    # UPDATE R_igraph_neighborhood TO C_R_igraph_neighborhood..... 12/02/2020
 
-    upID <- lapply(.Call(igraph:::C_R_igraph_neighborhood, gr,
+    upID <- lapply(
+      .Call(igraph:::C_R_igraph_neighborhood, gr,
 
-                         igraph:::as.igraph.vs(gr, confluenceID) - 1, as.numeric(1),
+        igraph:::as.igraph.vs(gr, confluenceID) - 1, as.numeric(1),
 
-                         as.numeric(2), as.integer(0), PACKAGE = "igraph"),
+        as.numeric(2), as.integer(0),
+        PACKAGE = "igraph"
+      ),
 
-                   function(x) x[-1] + 1)
+      function(x) x[-1] + 1
+    )
 
 
 
@@ -87,7 +90,6 @@ idPsuedoSource <- function(gr, gr_full) {
     # if so are these upstream nodes connected?
 
     if (any(is.PsuedoSource)) {
-
       upIDps <- upID[is.PsuedoSource]
 
       len <- sapply(upIDps, length)
@@ -97,9 +99,7 @@ idPsuedoSource <- function(gr, gr_full) {
       # odd one... why would this happen??
 
       if (any(len == 1)) {
-
         is.braid[len == 1] <- TRUE
-
       }
 
 
@@ -107,34 +107,34 @@ idPsuedoSource <- function(gr, gr_full) {
       gr.names.map <- as.vector(V(gr_full)[gr.names])
 
       if (any(len == 2)) {
-
         is.braid[len == 2] <- sapply(upIDps[len == 2], function(x) {
+          upcommon <- do.call(
+            intersect,
 
-          upcommon <- do.call(intersect,
+            .Call(igraph:::C_R_igraph_neighborhood, gr_full,
 
-                              .Call(igraph:::C_R_igraph_neighborhood, gr_full,
+              gr.names.map[x] - 1, as.numeric(20),
 
-                                    gr.names.map[x] - 1, as.numeric(20),
-
-                                    as.numeric(2), as.integer(0), PACKAGE = "igraph"))
+              as.numeric(2), as.integer(0),
+              PACKAGE = "igraph"
+            )
+          )
 
           length(upcommon) > 0
-
         })
-
       }
 
 
 
       if (any(len > 2)) {
-
         is.braid[len > 2] <- sapply(upIDps[len > 2], function(x) {
-
           upIDs <- .Call(igraph:::C_R_igraph_neighborhood, gr_full,
 
-                         gr.names.map[x] - 1, as.numeric(20),
+            gr.names.map[x] - 1, as.numeric(20),
 
-                         as.numeric(2), as.integer(0), PACKAGE = "igraph")
+            as.numeric(2), as.integer(0),
+            PACKAGE = "igraph"
+          )
 
           # if there is atleast one unconnected node then this is
 
@@ -142,24 +142,17 @@ idPsuedoSource <- function(gr, gr_full) {
 
           # otherwise if all up nodes are connected then it is a braid.
 
-          upcommon <- apply(combn(1:length(upIDs[c(1,1,2)]), 2), 2, function(ids) length(do.call(intersect, upIDs[ids])))
+          upcommon <- apply(combn(1:length(upIDs[c(1, 1, 2)]), 2), 2, function(ids) length(do.call(intersect, upIDs[ids])))
 
           all(upcommon > 0)
-
         })
-
       }
 
       # mark confulenceIDs that are braids as sources to be removed
 
       sourceID <- c(sourceID, unlist(upIDps[is.braid]))
-
     }
-
   }
 
-
-
   gr.names[sourceID]
-
 }

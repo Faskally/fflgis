@@ -1,5 +1,5 @@
 # Edited buffer function for river nodes
-
+#' @export
 find_River_Node_Buffers<-function (p, up_distance = 100, width = 25, search_buffer = 200,
                                    search_width = NULL, rivs_buffer = 100, debug = FALSE, rivs,
                                    g, wareas, wlines, snap_to_shifted_sepaline = TRUE)

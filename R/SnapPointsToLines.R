@@ -1,4 +1,5 @@
 # New snapPointsToLines
+#' @export
 
 snapPointsToLines<-function (points, lines, maxDist = NA, withAttrs = TRUE, idField = NA)
 {
@@ -59,4 +60,3 @@ snapPointsToLines<-function (points, lines, maxDist = NA, withAttrs = TRUE, idFi
   SpatialPointsDataFrame(coords = t(mNewCoords), data = df,
                          proj4string = CRS(proj4string(points)))
 }
-

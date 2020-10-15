@@ -1,0 +1,25 @@
+---
+title: "fflgis"
+date: "15 October 2020"
+output:
+  github_document:
+    html_preview: false
+---
+
+## installation
+
+To install the `fflgis` package run
+```r
+remotes::install_github("faskally/fflgis")
+```
+
+# Some simple examples to follow
+
+
+### how to build this file
+
+this file was created using
+
+```{r eval = FALSE}
+rmarkdown::render("README.Rmd")
+```

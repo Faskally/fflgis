@@ -3,9 +3,4 @@
 \docType{package}
 \name{fflgis}
 \alias{fflgis}
-\alias{fflgis-package}
 \title{A set of functions to help with}
-\description{
-A set of functions to help with
-}
-

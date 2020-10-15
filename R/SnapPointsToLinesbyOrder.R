@@ -1,4 +1,4 @@
-# Editted snap points to lines for river nodes
+# Edited snap points to lines for river nodes
 
 snapPointsToLinesbyOrder<-
   function (points, lines, maxDist = NA, withAttrs = TRUE, idField = NA)

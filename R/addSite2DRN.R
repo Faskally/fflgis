@@ -1,6 +1,6 @@
-addSite2DRN <- function(site, rivs, site_name, rname) {
+addSite2DRN <- function(site, rivs, site_name, rname,mdist = 200) {
   # find segment to split
-  snap_site <- snapPointsToLines(site, rivs)
+  snap_site <- snapPointsToLines(site, rivs,maxDist = mdist)
 
   # is site already a node?
   if (paste(coordinates(snap_site), collapse = ":") %in% unlist(getUpDownNodes(rivs))) {
@@ -48,23 +48,24 @@ addSite2DRN <- function(site, rivs, site_name, rname) {
   rbind(rivs_keep, out)
 }
 
-#' @export
-addSites2DRN <- function(sites, rivs, site_names) {
+
+addSites2DRN <- function (sites, rivs, site_names,mdist = 200)
+{
   message("Make sure that sites locations are unique if possible. \nOtherwise site names could be overwritten.\n")
-  # get column name to put site names in
   if (is.null(names(site_names))) {
     rname <- "site.name"
-  } else {
+  }
+  else {
     rname <- names(site_names)
   }
-  # if rivs does not have site columns in dataframe, then add them as ""
   if (is.null(rivs[[rname]])) {
     rivs[[rname]] <- ""
   }
-  # get site name from sites data
   site_names <- sites[[site_names]]
   for (i in 1:length(sites)) {
-    rivs <- addSite2DRN(sites[i, ], rivs, site_names[i], rname)
+    rivs <- addSite2DRN(sites[i, ], rivs, site_names[i],
+                          rname,
+                          mdist = mdist)
   }
   rivs
 }

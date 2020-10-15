@@ -3,10 +3,8 @@ Title: Freshwater Fisheries Laboratory library for manipulation of spatial data
 Version: 0.0.1
 Authors@R: person(c("Colin", "P."), "Millar", role = c("aut", "cre"),
                    email = "C.Millar@marlab.ac.uk")
-Description: A set of functions to help with the fitting of
-    gmrf models in mgcv.  The package is intended for the fitting GMRF models
-    such as random walks and seasonal effects.  The code is written as simply
-    as possible to make is easy to see how GMRFs are constructed.
+Description: A set of functions to help with spatial data analysis
+  with a focus on river networks.
 Depends:
     R (>= 3.1.0),
     igraph,

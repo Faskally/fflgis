@@ -1,3 +1,5 @@
+# getOrder update to work with updated igraph package
+
 getOrder<-function (graph, plot.it = FALSE, max_order = 10)
 {
 

@@ -1,3 +1,5 @@
+# Updated addSite2DRN function due to update to snapPointsToLines
+
 addSite2DRN <- function(site, rivs, site_name, rname,mdist = 200) {
   # find segment to split
   snap_site <- snapPointsToLines(site, rivs,maxDist = mdist)

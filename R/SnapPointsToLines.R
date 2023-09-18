@@ -8,11 +8,11 @@ snapPointsToLines<-function (points, lines, maxDist = NA, withAttrs = TRUE, idFi
       stop("package rgeos required for snapPointsToLines")
   }
   else stop("rgeos not installed")
-  if (class(points) == "SpatialPoints" && missing(withAttrs))
+  if (inherits(points, "SpatialPoints") && missing(withAttrs))
     withAttrs = FALSE
-  if (class(points) == "SpatialPoints" && withAttrs == TRUE)
+  if (inherits(points, "SpatialPoints") && withAttrs == TRUE)
     stop("A SpatialPoints object has no attributes! Please set withAttrs as FALSE.")
-  d = rgeos::gDistance(points, lines, byid = TRUE)
+  d = gDistance(points, lines, byid = TRUE)
   if (!is.na(maxDist)) {
     distToLine <- apply(d, 2, min, na.rm = TRUE)
     validPoints <- distToLine <= maxDist

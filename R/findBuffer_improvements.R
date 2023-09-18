@@ -7,7 +7,7 @@
 #' @export
 findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
                        search_width = NULL, rivs_buffer = 100, debug = FALSE,
-                       rivs, g, wareas, wlines, 
+                       rivs, g, wareas, wlines,
                        snap_to_shifted_sepaline = TRUE)
 {
   # setup
@@ -23,7 +23,7 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
   bbox <- gBuffer(p, width = max(search_buffer, up_distance*1.5))
   if (debug) plot(bbox, border = grey(0.7))
 
-  wk_rivs_orig <- rivs[as.vector(rgeos::gIntersects(rivs, bbox, byid = TRUE)),]
+  wk_rivs_orig <- rivs[as.vector(gIntersects(rivs, bbox, byid = TRUE)),]
   wk_rivs <- shift(wk_rivs_orig, xyshift[1], xyshift[2])
   if (debug) lines(wk_rivs)
 
@@ -118,8 +118,8 @@ findBuffer <- function(p, up_distance = 100, width = 25, search_buffer = 200,
     # there are no MM_water bodies near by... this needs to be flagged somehow...
     buff_riv <- gBuffer(seg3, width = width, byid = FALSE)
   } else {
-    buff_riva <- if (is.null(cut_wareas)) NULL else rgeos::gBuffer(cut_wareas, width = width, byid = FALSE)
-    buff_rivl <- if (is.null(cut_wlines)) NULL else rgeos::gBuffer(cut_wlines, width = width, byid = FALSE)
+    buff_riva <- if (is.null(cut_wareas)) NULL else gBuffer(cut_wareas, width = width, byid = FALSE)
+    buff_rivl <- if (is.null(cut_wlines)) NULL else gBuffer(cut_wlines, width = width, byid = FALSE)
 
     if (is.null(cut_wareas)) {
       buff_riv <- buff_rivl
@@ -203,17 +203,17 @@ findShift <- function(p, search_buffer = 200, rivs_buffer = 100, debug = FALSE,
   bbox <- gBuffer(p, width = search_buffer)
 
   # find first draft of river lines to get a buffer
-  wk_rivs <- rivs[as.vector(rgeos::gIntersects(rivs, bbox, byid = TRUE)),]
+  wk_rivs <- rivs[as.vector(gIntersects(rivs, bbox, byid = TRUE)),]
   buf <- gBuffer(wk_rivs, width = rivs_buffer)
   if (debug) plot(buf, col = col_alpha("orange", 0.2), main = "finding xyshift")
 
   # use buffer to crop rivs
-  wk_rivs <- rivs[as.vector(rgeos::gIntersects(rivs, buf, byid = TRUE)),]
+  wk_rivs <- rivs[as.vector(gIntersects(rivs, buf, byid = TRUE)),]
   wk_rivs <- gIntersection(wk_rivs, buf)
   if (debug) lines(wk_rivs)
 
   # use buffer to crop water lines
-  wk_wlines <- wlines[as.vector(rgeos::gIntersects(wlines, buf, byid = TRUE)),]
+  wk_wlines <- wlines[as.vector(gIntersects(wlines, buf, byid = TRUE)),]
   wk_wlines <- gIntersection(wk_wlines, buf)
   if (debug && !is.null(wk_wlines)) lines(wk_wlines, col = "blue")
 
@@ -226,14 +226,14 @@ findShift <- function(p, search_buffer = 200, rivs_buffer = 100, debug = FALSE,
     if (!debug){
       optim(c(0,0), function(par, ...) {
         shifted_lxy <- shift(lxy, par[1], par[2])
-        sum(rgeos::gDistance(shifted_lxy, wk_wlines, byid = TRUE))
+        sum(gDistance(shifted_lxy, wk_wlines, byid = TRUE))
       }, method = "BFGS")$par
     } else if (debug) {
       # if debug, then plot the shifted points at each iteration of the optimiser
       optim(c(0,0), function(par, ...) {
         shifted_lxy <- shift(lxy, par[1], par[2])
         points(shifted_lxy, pch = ".")
-        sum(rgeos::gDistance(shifted_lxy, wk_wlines, byid = TRUE))
+        sum(gDistance(shifted_lxy, wk_wlines, byid = TRUE))
       }, method = "BFGS")$par
     }
 
@@ -297,4 +297,3 @@ groupBufferList <- function(buffer_list) {
        cut_lines = cut_lines, riv_seg = riv_seg,
        sites = sites)
 }
-

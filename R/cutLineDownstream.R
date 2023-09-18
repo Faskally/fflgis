@@ -1,9 +1,10 @@
-#' Cut off the downdtream segment of a river segment at a point
+#' Cut off the down stream segment of a river segment at a point
 #'
 #' @param line a spatial line.
 #' @param pt a spatial point, previously snapped to \code{line}.
 #' @return A spatial lines object.
 #' @examples
+#' library(sp)
 #' bng <- CRS("+init=epsg:27700")
 #' cc <- cbind(c(0,0), c(0,1))
 #' line <- SpatialLines(list(Lines(list(Line(cc)), ID = "A")), bng)
@@ -40,7 +41,7 @@ cutLineDownstream <- function(line, pt) {
   # find which interval the snapped point is in
   # split into many line segments
   slcc <- SpatialLines(lapply(1:(nrow(cc)-1), function(i) Lines(list(Line(cc[i + 0:1,])), ID = i)), crs(line))
-  d <- rgeos::gDistance(pt, slcc, byid = TRUE)
+  d <- gDistance(pt, slcc, byid = TRUE)
   int <- which.min(d)
   # new coords for line (cut downstream points out)
   cc_new <- rbind(cc[1:int,],coordinates(pt))

@@ -2,7 +2,7 @@
 % Please edit documentation in R/cutLineDownstream.R
 \name{cutLineDownstream}
 \alias{cutLineDownstream}
-\title{Cut off the downdtream segment of a river segment at a point}
+\title{Cut off the down stream segment of a river segment at a point}
 \usage{
 cutLineDownstream(line, pt)
 }
@@ -15,9 +15,10 @@ cutLineDownstream(line, pt)
 A spatial lines object.
 }
 \description{
-Cut off the downdtream segment of a river segment at a point
+Cut off the down stream segment of a river segment at a point
 }
 \examples{
+library(sp)
 bng <- CRS("+init=epsg:27700")
 cc <- cbind(c(0,0), c(0,1))
 line <- SpatialLines(list(Lines(list(Line(cc)), ID = "A")), bng)

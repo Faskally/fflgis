@@ -1,3 +1,5 @@
+globalVariables(c("nei", "from"))
+
 #' @export
 addOrder2Graph <- function(graph, order) {
   V(graph)$order <- order

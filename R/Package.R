@@ -2,46 +2,23 @@
 #'
 #' @docType package
 #' @name fflgis
-#' @import igraph
+#' @description Functions to help with spatial data analysis with a focus on river networks.
+#' @importFrom igraph V E V<- E<- induced.subgraph igraph_opt igraph.options degree make_graph
+#' @importFrom igraph vcount get.shortest.paths get.edge.ids is.dag is.named neighborhood
 #' @importFrom sp 'spChFIDs<-'
-#' @importFrom sp coordinates
-#' @importFrom sp SpatialPoints
-#' @importFrom sp SpatialPointsDataFrame
-#' @importFrom sp SpatialLines
-#' @importFrom sp SpatialLinesDataFrame
-#' @importFrom sp SpatialLinesLengths
-#' @importFrom sp SpatialPolygons
-#' @importFrom sp SpatialPolygonsDataFrame
-#' @importFrom sp Line
-#' @importFrom sp LineLength
-#' @importFrom sp Lines
-#' @importFrom sp Polygon
-#' @importFrom sp Polygons
-#' @importFrom sp CRS
-#' @importFrom sp spTransform
-#' @importFrom sp proj4string
-#' @importFrom sp spsample
-#' @importFrom sp bbox
-#' @importFrom sp is.projected
-#' @importFrom raster projection
-#' @importFrom raster extent
-#' @importFrom raster crop
-#' @importFrom raster shift
-#' @importFrom raster extract
-#' @importFrom raster crs
-#' @importFrom raster 'crs<-'
-#' @importFrom raster scalebar
-#' @importFrom rgeos gBuffer
-#' @importFrom rgeos gDistance
-#' @importFrom rgeos gLineMerge
-#' @importFrom rgeos gIntersection
-#' @importFrom rgeos gUnion
-#' @importFrom rgeos gUnaryUnion
-#' @importFrom rgeos gIntersects
-#' @importFrom rgeos gDifference
+#' @importFrom sp coordinates SpatialPoints SpatialPointsDataFrame SpatialLines
+#' @importFrom sp SpatialLinesDataFrame SpatialLinesLengths
+#' @importFrom sp SpatialPolygons SpatialPolygonsDataFrame Line LineLength Lines Polygon Polygons
+#' @importFrom sp CRS spTransform proj4string spsample bbox is.projected
+#' @importFrom raster projection extent crop shift extract crs 'crs<-' scalebar
+#' @importFrom rgeos gBuffer gDistance gLineMerge gIntersection gUnion gUnaryUnion gIntersects gDifference gWithinDistance
 #' @importFrom dismo gmap
-#' @importFrom maptools snapPointsToLines
-#' @importFrom rgdal readOGR
-#' @importFrom rgdal writeOGR
+#' @importFrom maptools snapPointsToLines rgeosStatus nearestPointOnLine
+#' @importFrom rgdal readOGR writeOGR
 #'
+#' @importFrom grDevices colorRampPalette grey terrain.colors
+#' @importFrom graphics lines points
+#' @importFrom methods is slot
+#' @importFrom stats optim
+#' @importFrom utils browseURL combn head tail
 NULL

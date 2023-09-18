@@ -39,7 +39,7 @@ find_River_Node_Buffers<-function (p, up_distance = 100, width = 25, search_buff
   if (debug)
     plot(bbox, border = grey(0.7))
   # Clipped original drn
-  wk_rivs_orig <- rivs[as.vector(rgeos::gIntersects(rivs, bbox,
+  wk_rivs_orig <- rivs[as.vector(gIntersects(rivs, bbox,
                                                     byid = TRUE)), ]
   #print(wk_rivs_orig@data)
   # Shifted drn (using xyshift so can be slightly different each time)
@@ -193,10 +193,10 @@ find_River_Node_Buffers<-function (p, up_distance = 100, width = 25, search_buff
   else {
     buff_riva <- if (is.null(cut_wareas))
       NULL
-    else rgeos::gBuffer(cut_wareas, width = width, byid = FALSE)
+    else gBuffer(cut_wareas, width = width, byid = FALSE)
     buff_rivl <- if (is.null(cut_wlines))
       NULL
-    else rgeos::gBuffer(cut_wlines, width = width, byid = FALSE)
+    else gBuffer(cut_wlines, width = width, byid = FALSE)
     if (is.null(cut_wareas)) {
       buff_riv <- buff_rivl
     }

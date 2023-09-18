@@ -4,3 +4,6 @@
 \name{fflgis}
 \alias{fflgis}
 \title{A set of functions to help with}
+\description{
+Functions to help with spatial data analysis with a focus on river networks.
+}

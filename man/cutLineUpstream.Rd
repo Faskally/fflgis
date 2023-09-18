@@ -18,6 +18,8 @@ A spatial lines object.
 Cut off the upstream segment of a river segment at a point
 }
 \examples{
+library(sp)
+
 bng <- CRS("+init=epsg:27700")
 cc <- cbind(c(0,0), c(0,1))
 line <- SpatialLines(list(Lines(list(Line(cc)), ID = "A")), bng)

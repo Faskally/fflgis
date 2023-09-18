@@ -12,7 +12,7 @@ cropFeature <- function(x, xy, buffer = 0) {
     bbox <- gBuffer(bbox, width = buffer, byid = TRUE)
   }
 
-  ind <- as.vector(rgeos::gIntersects(x, bbox, byid = TRUE))
+  ind <- as.vector(gIntersects(x, bbox, byid = TRUE))
 
   if (sum(ind) == 0) ind <- 1
 

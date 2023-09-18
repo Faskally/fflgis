@@ -1,6 +1,6 @@
 #' @export
 getSeaDistance <- function(p, rivs, g) {
-  p_snap <- maptools::snapPointsToLines(p, rivs)
+  p_snap <- snapPointsToLines(p, rivs)
 
   ids <- as.character(unlist(p_snap@data[,names(p_snap) == "nearest_line_id"]))
   if (length(ids) > 1) {

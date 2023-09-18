@@ -9,12 +9,12 @@ snapPointsToLinesbyOrder<-
         stop("package rgeos required for snapPointsToLines")
     }
     else stop("rgeos not installed")
-    if (class(points) == "SpatialPoints" && missing(withAttrs))
+    if (inherits(points, "SpatialPoints") && missing(withAttrs))
       withAttrs = FALSE
-    if (class(points) == "SpatialPoints" && withAttrs == TRUE)
+    if (inherits(points, "SpatialPoints") && withAttrs == TRUE)
       stop("A SpatialPoints object has no attributes! Please set withAttrs as FALSE.")
     if (!is.na(maxDist)) {
-      w = rgeos::gWithinDistance(points, lines, dist = maxDist,
+      w = gWithinDistance(points, lines, dist = maxDist,
                                  byid = TRUE)
       validPoints = apply(w, 2, any)
       validLines = apply(w, 1, any)
@@ -22,7 +22,7 @@ snapPointsToLinesbyOrder<-
       lines = lines[validLines, ]
     }
     # get a matrix of distances for the point to each of the lines (within the specified buffer area)
-    d = rgeos::gDistance(points, lines, byid = TRUE)
+    d = gDistance(points, lines, byid = TRUE)
     # Round to make sure you will always get a 0 because 0.00000000092766569 for example is
     # clearly 0 but won't come out in the which.
     d <- round(d, 2)
